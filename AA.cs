@@ -23,15 +23,24 @@ namespace AlwaysAwake
         [STAThread]
         static void Main(string[] args)
         {
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+
             bool createdNew;
             // Nazwa z "Local\" => jedna instancja na sesje uzytkownika.
             mutex = new System.Threading.Mutex(true, "Local\\AA_AlwaysAwake_SingleInstance", out createdNew);
-            if (!createdNew) return; // juz dziala - nie uruchamiaj drugiej
+            if (!createdNew) // juz dziala - nie uruchamiaj drugiej
+            {
+                MessageBox.Show(
+                    "AA juz dziala - moze byc uruchomiona tylko jedna kopia programu.\n\n" +
+                    "Ikona (kropka) jest w zasobniku przy zegarze; jesli jej nie widac, " +
+                    "kliknij strzalke ^ obok zegara.",
+                    "AA - Always Awake", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
 
             try
             {
-                Application.EnableVisualStyles();
-                Application.SetCompatibleTextRenderingDefault(false);
                 Application.Run(new TrayContext(args));
             }
             finally
