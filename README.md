@@ -20,16 +20,14 @@ Jeden samodzielny plik `.exe`, bez instalacji i bez zależności poza .NET Frame
 - **Autostart** — skrót w folderze Startup użytkownika (bez rejestru, bez admina).
 - **Pojedyncza instancja** — mutex pilnuje, by działała tylko jedna kopia.
 
+## Pobieranie
+
+Gotowy `AA.exe` jest dostępny w zakładce **Releases**.
+
 ## Budowanie
 
 Wymagany tylko wbudowany w Windows kompilator C# (`csc.exe`, .NET Framework 4).
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\build.ps1
-```
-
-Skrypt sam znajdzie `csc.exe` oraz `AA.cs` i zbuduje `AA.exe` obok siebie.
-Alternatywnie, ręcznie:
+W folderze z `AA.cs` uruchom w PowerShell:
 
 ```powershell
 & "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /target:winexe /out:AA.exe /reference:System.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll AA.cs
