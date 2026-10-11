@@ -19,7 +19,11 @@ Jeden samodzielny plik `.exe`, bez instalacji i bez zależności poza .NET Frame
 - **Jitter interwału** — opcjonalne losowe wahanie odstępu (±10%).
 - **Zapamiętywanie ustawień** — `%AppData%\AA\settings.ini`.
 - **Autostart** — skrót w folderze Startup użytkownika (bez rejestru, bez admina).
-- **Pojedyncza instancja** — mutex pilnuje, by działała tylko jedna kopia.
+- **Pojedyncza instancja** — mutex pilnuje, by działała tylko jedna kopia (przy próbie
+  uruchomienia drugiej pojawia się komunikat).
+- **Trzy języki** — polski, angielski i niemiecki; domyślnie według języka Windows,
+  zmiana w menu „Język (Language)” lub w ustawieniach, bez restartu.
+- **Okno „O programie”** — wersja, autor, licencja i link do repozytorium.
 
 ## Pobieranie
 
@@ -35,7 +39,7 @@ Wymagany tylko wbudowany w Windows kompilator C# (`csc.exe`, .NET Framework 4).
 W folderze z `AA.cs` i `AA.ico` uruchom w PowerShell:
 
 ```powershell
-& "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /target:winexe /out:AA.exe /win32icon:AA.ico /reference:System.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll AA.cs
+& "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /codepage:65001 /target:winexe /out:AA.exe /win32icon:AA.ico /reference:System.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll AA.cs
 ```
 
 ## Użycie
@@ -43,7 +47,7 @@ W folderze z `AA.cs` i `AA.ico` uruchom w PowerShell:
 Uruchom `AA.exe` — pojawi się kropka w zasobniku.
 
 - **Prawy klik** → menu: Aktywne, Tryb, Auto-wyłącz po, Tryb bezczynności,
-  Jitter, Uruchamiaj przy starcie, Ustawienia / O programie, Zakończ.
+  Jitter, Uruchamiaj przy starcie, Język, Ustawienia, O programie, Zakończ.
 - **Dwuklik lewym** → szybkie włącz/wyłącz.
 
 Argumenty wiersza poleceń (opcjonalne, nadpisują zapisane ustawienia na starcie;
