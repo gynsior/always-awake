@@ -17,8 +17,8 @@ using System.Windows.Forms;
 [assembly: AssemblyDescription("Utrzymuje komputer aktywnym (zapobiega wygaszeniu i blokadzie ekranu)")]
 [assembly: AssemblyProduct("AA - Always Awake")]
 [assembly: AssemblyCopyright("Copyright (c) 2026 Galeziok")]
-[assembly: AssemblyVersion("2.4.0.0")]
-[assembly: AssemblyFileVersion("2.4.0.0")]
+[assembly: AssemblyVersion("2.5.0.0")]
+[assembly: AssemblyFileVersion("2.5.0.0")]
 
 namespace AlwaysAwake
 {
@@ -72,7 +72,7 @@ namespace AlwaysAwake
     static class AppInfo
     {
         public const string Name = "AA - Always Awake";
-        public const string Version = "2.4";
+        public const string Version = "2.5";
         public const string Author = "Galeziok";
         public const string AuthorUrl = "https://github.com/gynsior";
         public const string RepoUrl = "https://github.com/gynsior/always-awake";
@@ -191,6 +191,11 @@ namespace AlwaysAwake
             { "MenuAutoOffCustom", new[] { "Własny czas / godzina...", "Custom time / until...", "Eigene Zeit / Uhrzeit..." } },
             { "AutoOffUntil",  new[] { "Do {0}", "Until {0}", "Bis {0}" } },
             { "AutoOffCustom", new[] { "Własny: {0}", "Custom: {0}", "Eigene: {0}" } },
+            { "MenuPause",     new[] { "Wstrzymaj na", "Pause for", "Pausieren für" } },
+            { "MenuPausedUntil", new[] { "Wstrzymane do {0}", "Paused until {0}", "Pausiert bis {0}" } },
+            { "MenuResume",    new[] { "Wznów teraz", "Resume now", "Jetzt fortsetzen" } },
+            { "MenuSchedule",  new[] { "Harmonogram ({0})", "Schedule ({0})", "Zeitplan ({0})" } },
+            { "MenuApps",      new[] { "Włączaj przy programach", "Turn on with programs", "Bei Programmen einschalten" } },
             { "MenuIdle",      new[] { "Tryb bezczynności", "Idle-aware mode", "Leerlaufmodus" } },
             { "MenuJitter",    new[] { "Jitter interwału", "Interval jitter", "Intervall-Jitter" } },
             { "MenuAutoStart", new[] { "Uruchamiaj przy starcie", "Run at startup", "Mit Windows starten" } },
@@ -209,6 +214,10 @@ namespace AlwaysAwake
             { "TipPaused",     new[] { "AA - wstrzymane ({0})", "AA - paused ({0})", "AA - pausiert ({0})" } },
             { "TipOffIn",      new[] { ", wyłączy się za {0}", ", off in {0}", ", aus in {0}" } },
             { "TipUntil",      new[] { ", do {0}", ", until {0}", ", bis {0}" } },
+            { "TipPausedUntil", new[] { "AA - wstrzymane do {0}", "AA - paused until {0}", "AA - pausiert bis {0}" } },
+            { "TipApp",        new[] { ", przez {0}", ", by {0}", ", durch {0}" } },
+            { "TipSchedule",   new[] { ", harmonogram do {0}", ", schedule until {0}", ", Zeitplan bis {0}" } },
+            { "BalloonPauseEnd", new[] { "Koniec przerwy - AA znowu aktywne.", "Pause over - AA is active again.", "Pause vorbei - AA ist wieder aktiv." } },
 
             // --- dymki ---
             { "BalloonOn",     new[] { "AA aktywne", "AA active", "AA aktiv" } },
@@ -282,6 +291,29 @@ namespace AlwaysAwake
                                        "Achtung: {0} entspricht AltGr+{1} und blockiert die Eingabe dieses Zeichens (z. B. @, €)." } },
             { "Ok",            new[] { "OK", "OK", "OK" } },
             { "Cancel",        new[] { "Anuluj", "Cancel", "Abbrechen" } },
+
+            // --- zakladka Automatyka ---
+            { "TabGeneral",    new[] { "Ogólne", "General", "Allgemein" } },
+            { "TabAutomation", new[] { "Automatyka", "Automation", "Automatik" } },
+            { "ChkSchedule",   new[] { "Harmonogram - aktywne tylko w wybrane dni i godziny",
+                                       "Schedule - active only on selected days and hours",
+                                       "Zeitplan - nur an ausgewählten Tagen und Uhrzeiten aktiv" } },
+            { "Days",          new[] { "Pn,Wt,Śr,Cz,Pt,So,Nd", "Mo,Tu,We,Th,Fr,Sa,Su", "Mo,Di,Mi,Do,Fr,Sa,So" } },
+            { "LblFrom",       new[] { "Od:", "From:", "Von:" } },
+            { "LblTo",         new[] { "Do:", "To:", "Bis:" } },
+            { "ScheduleHint",  new[] { "Poza tymi godzinami AA się wstrzymuje. Ręczne włączenie/wyłączenie obowiązuje do następnej zmiany harmonogramu.",
+                                       "Outside these hours AA pauses. Turning AA on/off manually lasts until the next schedule change.",
+                                       "Außerhalb dieser Zeiten pausiert AA. Manuelles Ein-/Ausschalten gilt bis zur nächsten Zeitplanänderung." } },
+            { "ChkApps",       new[] { "Włączaj AA, gdy działa któryś z programów:",
+                                       "Turn AA on while one of these programs is running:",
+                                       "AA einschalten, solange eines dieser Programme läuft:" } },
+            { "BtnPickApps",   new[] { "Dodaj z uruchomionych...", "Add from running...", "Aus laufenden hinzufügen..." } },
+            { "AppsHint",      new[] { "Nazwy procesów bez .exe, po jednym w linii (np. POWERPNT, Teams, vlc). Po zamknięciu programu AA wraca do poprzedniego stanu.",
+                                       "Process names without .exe, one per line (e.g. POWERPNT, Teams, vlc). When the program closes, AA returns to its previous state.",
+                                       "Prozessnamen ohne .exe, einer pro Zeile (z. B. POWERPNT, Teams, vlc). Nach dem Beenden kehrt AA zum vorherigen Zustand zurück." } },
+            { "PickTitle",     new[] { "AA - Wybierz programy", "AA - Choose programs", "AA - Programme auswählen" } },
+            { "PickHint",      new[] { "Zaznacz programy (Ctrl = kilka naraz):", "Select programs (Ctrl = several):", "Programme auswählen (Strg = mehrere):" } },
+            { "Add",           new[] { "Dodaj", "Add", "Hinzufügen" } },
 
             // --- okno wlasnego czasu auto-wylaczenia ---
             { "AutoOffTitle",  new[] { "AA - Auto-wyłączenie", "AA - Auto-off", "AA - Automatisch aus" } },
@@ -454,6 +486,61 @@ namespace AlwaysAwake
         public bool AutoUpdate = true;
         public bool HotkeyEnabled = true;
         public string Hotkey = "Ctrl+Alt+K";
+        public bool ScheduleEnabled = false;
+        public string ScheduleDays = "1111100";  // pon..niedz, 1 = aktywny dzien
+        public int ScheduleStart = 8 * 60;       // minuty od polnocy
+        public int ScheduleEnd = 17 * 60;
+        public bool AppsEnabled = false;
+        public string Apps = "";                 // nazwy procesow oddzielone ';'
+
+        public static string FormatTime(int minutes)
+        {
+            return string.Format("{0:00}:{1:00}", minutes / 60, minutes % 60);
+        }
+
+        static bool TryParseTime(string v, out int minutes)
+        {
+            minutes = 0;
+            string[] p = v.Split(':');
+            int hh, mm;
+            if (p.Length != 2 || !int.TryParse(p[0], out hh) || !int.TryParse(p[1], out mm)) return false;
+            if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return false;
+            minutes = hh * 60 + mm;
+            return true;
+        }
+
+        // "POWERPNT.exe; Teams\nvlc" -> { "POWERPNT", "Teams", "vlc" }
+        public static string[] ParseApps(string text)
+        {
+            List<string> list = new List<string>();
+            foreach (string part in (text ?? "").Split(new char[] { ';', ',', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                string n = part.Trim();
+                if (n.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) n = n.Substring(0, n.Length - 4);
+                if (n.Length > 0 && !list.Exists(delegate(string x) { return string.Equals(x, n, StringComparison.OrdinalIgnoreCase); }))
+                    list.Add(n);
+            }
+            return list.ToArray();
+        }
+
+        // Czy chwila 'now' miesci sie w harmonogramie. Gdy koniec <= start, okno trwa
+        // przez polnoc i nalezy do dnia, w ktorym sie zaczelo (np. pt 22:00 - sob 06:00).
+        public bool IsInSchedule(DateTime now)
+        {
+            int t = now.Hour * 60 + now.Minute;
+            int day = ((int)now.DayOfWeek + 6) % 7; // 0 = poniedzialek
+            int prev = (day + 6) % 7;
+            if (ScheduleStart < ScheduleEnd)
+                return DayOn(day) && t >= ScheduleStart && t < ScheduleEnd;
+            if (ScheduleStart == ScheduleEnd)
+                return DayOn(day);
+            return (DayOn(day) && t >= ScheduleStart) || (DayOn(prev) && t < ScheduleEnd);
+        }
+
+        public bool DayOn(int day)
+        {
+            return ScheduleDays != null && day < ScheduleDays.Length && ScheduleDays[day] == '1';
+        }
 
         static string Dir()
         {
@@ -515,6 +602,18 @@ namespace AlwaysAwake
                             case "Hotkey":
                                 if (HotkeyText.TryParse(v, out hm, out hk)) s.Hotkey = HotkeyText.Format(hm, hk);
                                 break;
+                            case "ScheduleEnabled": s.ScheduleEnabled = ParseBool(v, s.ScheduleEnabled); break;
+                            case "ScheduleDays":
+                                if (Regex.IsMatch(v, "^[01]{7}$")) s.ScheduleDays = v;
+                                break;
+                            case "ScheduleStart":
+                                if (TryParseTime(v, out n)) s.ScheduleStart = n;
+                                break;
+                            case "ScheduleEnd":
+                                if (TryParseTime(v, out n)) s.ScheduleEnd = n;
+                                break;
+                            case "AppsEnabled": s.AppsEnabled = ParseBool(v, s.AppsEnabled); break;
+                            case "Apps": s.Apps = string.Join(";", ParseApps(v)); break;
                         }
                     }
                 }
@@ -543,6 +642,12 @@ namespace AlwaysAwake
                 sb.AppendLine("AutoUpdate=" + AutoUpdate);
                 sb.AppendLine("HotkeyEnabled=" + HotkeyEnabled);
                 sb.AppendLine("Hotkey=" + Hotkey);
+                sb.AppendLine("ScheduleEnabled=" + ScheduleEnabled);
+                sb.AppendLine("ScheduleDays=" + ScheduleDays);
+                sb.AppendLine("ScheduleStart=" + FormatTime(ScheduleStart));
+                sb.AppendLine("ScheduleEnd=" + FormatTime(ScheduleEnd));
+                sb.AppendLine("AppsEnabled=" + AppsEnabled);
+                sb.AppendLine("Apps=" + Apps);
                 File.WriteAllText(FilePath(), sb.ToString());
             }
             catch { }
@@ -680,10 +785,21 @@ namespace AlwaysAwake
         Action balloonAction;      // co zrobic po kliknieciu w dymek (null = nic)
         bool oldExePending;        // AA.exe.old po aktualizacji - do usuniecia
 
+        // Automatyka reaguje tylko na ZMIANY (start/koniec harmonogramu, start/zamkniecie
+        // programu, koniec pauzy), wiec reczne przelaczenie obowiazuje do nastepnej zmiany.
+        DateTime? pauseUntil;      // "Wstrzymaj na X" - nic nie wlacza AA przed tym czasem
+        bool automationReady;      // false = przy najblizszym sprawdzeniu ustaw stan wg harmonogramu
+        bool lastInSchedule, lastAppRunning;
+        bool appHolding;           // AA wlaczone przez program z listy
+        bool activeBeforeApp;      // stan do przywrocenia po zamknieciu programu
+        string triggerApp;         // dzialajacy program z listy (do podpowiedzi)
+
         Icon iconActive, iconInactive;
-        ToolStripMenuItem miToggle, miModeMenu, miAutoOffMenu, miAutoOffCustom, miAutoStart, miIdle, miJitter;
+        ToolStripMenuItem miToggle, miPauseMenu, miResume, miModeMenu, miAutoOffMenu, miAutoOffCustom;
+        ToolStripMenuItem miSchedule, miApps, miAutoStart, miIdle, miJitter;
         ToolStripMenuItem miLanguageMenu, miSettings, miUpdates, miAbout, miExit;
         int[] autoOffValues = new int[] { 0, 30, 60, 120, 240 };
+        int[] pauseValues = new int[] { 15, 30, 60, 120 };
 
         // otwarte okna (zeby nie otwierac drugiej kopii tego samego okna)
         SettingsForm settingsForm;
@@ -704,7 +820,7 @@ namespace AlwaysAwake
             notify = new NotifyIcon();
             notify.ContextMenuStrip = BuildContextMenu();
             notify.Visible = true;
-            notify.DoubleClick += delegate { SetActive(!active); };
+            notify.DoubleClick += delegate { SetActiveManual(!active); };
             notify.BalloonTipClicked += delegate
             {
                 Action a = balloonAction;
@@ -726,15 +842,19 @@ namespace AlwaysAwake
             hotkey = new HotkeyWindow();
             hotkey.Pressed += delegate
             {
-                SetActive(!active);
+                SetActiveManual(!active);
                 ShowBalloon(active ? L.S("BalloonOn") : L.S("BalloonOff"), ToolTipIcon.None, null, 1500);
             };
 
             if (active) { activationTime = DateTime.Now; }
+            // Stan wymuszony argumentem (np. po aktualizacji) ma pierwszenstwo przed harmonogramem.
+            automationReady = forced.HasValue;
+            lastInSchedule = settings.ScheduleEnabled && settings.IsInSchedule(DateTime.Now);
             ApplyTexts();
             ApplyHotkey(true);
             UpdateUi();
             DoKeepAwake(true);
+            EvaluateAutomation();
 
             oldExePending = File.Exists(OldExePath());
             DeleteOldExe();
@@ -749,7 +869,48 @@ namespace AlwaysAwake
         {
             miToggle = new ToolStripMenuItem();
             miToggle.CheckOnClick = true;
-            miToggle.Click += delegate { SetActive(miToggle.Checked); };
+            miToggle.Click += delegate { SetActiveManual(miToggle.Checked); };
+
+            miPauseMenu = new ToolStripMenuItem();
+            foreach (int m in pauseValues)
+            {
+                ToolStripMenuItem item = new ToolStripMenuItem();
+                item.Tag = m;
+                item.Click += delegate(object s, EventArgs e) { PauseFor((int)((ToolStripMenuItem)s).Tag); };
+                miPauseMenu.DropDownItems.Add(item);
+            }
+            miPauseMenu.DropDownItems.Add(new ToolStripSeparator());
+            miResume = new ToolStripMenuItem();
+            miResume.Click += delegate { SetActiveManual(true); };
+            miPauseMenu.DropDownItems.Add(miResume);
+
+            miSchedule = new ToolStripMenuItem();
+            miSchedule.CheckOnClick = true;
+            miSchedule.Click += delegate
+            {
+                settings.ScheduleEnabled = miSchedule.Checked;
+                settings.Save();
+                automationReady = false; // od razu ustaw stan wg harmonogramu
+                EvaluateAutomation();
+                UpdateUi();
+            };
+
+            miApps = new ToolStripMenuItem();
+            miApps.CheckOnClick = true;
+            miApps.Click += delegate
+            {
+                if (miApps.Checked && Settings.ParseApps(settings.Apps).Length == 0)
+                {
+                    // pusta lista - najpierw trzeba wybrac programy
+                    miApps.Checked = false;
+                    OpenSettings(1);
+                    return;
+                }
+                settings.AppsEnabled = miApps.Checked;
+                settings.Save();
+                EvaluateAutomation();
+                UpdateUi();
+            };
 
             miModeMenu = new ToolStripMenuItem();
             foreach (string m in new string[] { "Display", "Input", "Both" })
@@ -829,8 +990,12 @@ namespace AlwaysAwake
         {
             menu = new ContextMenuStrip();
             menu.Items.Add(miToggle);
+            menu.Items.Add(miPauseMenu);
             menu.Items.Add(miModeMenu);
             menu.Items.Add(miAutoOffMenu);
+            menu.Items.Add(new ToolStripSeparator());
+            menu.Items.Add(miSchedule);
+            menu.Items.Add(miApps);
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(miIdle);
             menu.Items.Add(miJitter);
@@ -848,6 +1013,10 @@ namespace AlwaysAwake
         void ApplyTexts()
         {
             miToggle.Text = L.S("MenuActive");
+            foreach (ToolStripItem it in miPauseMenu.DropDownItems)
+                if (it.Tag is int) it.Text = L.AutoOffLabel((int)it.Tag);
+            miResume.Text = L.S("MenuResume");
+            miApps.Text = L.S("MenuApps");
             miModeMenu.Text = L.S("MenuMode");
             miAutoOffMenu.Text = L.S("MenuAutoOff");
             foreach (ToolStripItem it in miAutoOffMenu.DropDownItems)
@@ -920,7 +1089,7 @@ namespace AlwaysAwake
                     if (until.HasValue)
                     {
                         // "do godziny" zaklada, ze AA ma dzialac do tego czasu
-                        if (!active) SetActive(true);
+                        if (!active || pauseUntil.HasValue) SetActiveManual(true);
                         untilTime = until;
                         UpdateUi();
                     }
@@ -981,10 +1150,11 @@ namespace AlwaysAwake
             {
                 if (AskUpdate(info)) InstallUpdate(info, true);
             }
-            else if (settings.AutoUpdate && !untilTime.HasValue &&
+            else if (settings.AutoUpdate && !untilTime.HasValue && !pauseUntil.HasValue &&
                      settingsForm == null && aboutForm == null && autoOffForm == null)
             {
-                // instalacja w tle; pomijana, gdy uzytkownik ma otwarte okno albo "do godziny"
+                // instalacja w tle; pomijana, gdy uzytkownik ma otwarte okno, "do godziny" albo pauze
+                // (te stany nie przetrwalyby restartu)
                 InstallUpdate(info, false);
             }
             else if (notifiedVersion != info.Version)
@@ -1127,11 +1297,12 @@ namespace AlwaysAwake
                 DateTime? deadline = OffDeadline();
                 if (deadline.HasValue && DateTime.Now >= deadline.Value)
                 {
-                    SetActive(false);
+                    SetActiveManual(false); // jak reczne wylaczenie - program z listy go nie cofnie
                     ShowBalloon(L.S("BalloonAutoOff"), ToolTipIcon.Info, null, 5000);
                 }
-                else UpdateTooltip();
             }
+            EvaluateAutomation();
+            UpdateUi();
             DeleteOldExe(); // zaraz po aktualizacji stary plik moze byc jeszcze zablokowany
             if (settings.CheckUpdates && DateTime.Now >= nextUpdateCheck)
             {
@@ -1161,6 +1332,95 @@ namespace AlwaysAwake
 
         void ClearKeepAwake() { SetThreadExecutionState(ES_CONTINUOUS); }
 
+        // Przelaczenie przez uzytkownika (menu, dwuklik, skrot): konczy pauze i "przejmuje"
+        // stan od programu z listy - automatyka zareaguje dopiero na nastepna zmiane.
+        void SetActiveManual(bool on)
+        {
+            pauseUntil = null;
+            appHolding = false;
+            SetActive(on);
+        }
+
+        void PauseFor(int minutes)
+        {
+            appHolding = false;
+            SetActive(false);
+            pauseUntil = DateTime.Now.AddMinutes(minutes);
+            UpdateUi();
+        }
+
+        // ---- automatyka: harmonogram, programy, koniec pauzy ----
+        void EvaluateAutomation()
+        {
+            DateTime now = DateTime.Now;
+            bool inSchedule = settings.ScheduleEnabled && settings.IsInSchedule(now);
+            string app = settings.AppsEnabled ? FindRunningApp() : null;
+            bool appRunning = app != null;
+            triggerApp = app;
+
+            if (pauseUntil.HasValue)
+            {
+                if (now < pauseUntil.Value)
+                {
+                    lastInSchedule = inSchedule; lastAppRunning = appRunning;
+                    return;
+                }
+                // koniec pauzy: wlacz, chyba ze harmonogram mowi "poza godzinami" i nic nie trzyma AA
+                pauseUntil = null;
+                automationReady = true;
+                activeBeforeApp = settings.ScheduleEnabled ? inSchedule : true;
+                appHolding = appRunning;
+                bool resume = appRunning || activeBeforeApp;
+                SetActive(resume);
+                if (resume) ShowBalloon(L.S("BalloonPauseEnd"), ToolTipIcon.Info, null, 4000);
+                lastInSchedule = inSchedule; lastAppRunning = appRunning;
+                return;
+            }
+
+            if (!automationReady)
+            {
+                // start programu albo wlaczenie harmonogramu: stan wg biezacej godziny
+                automationReady = true;
+                if (settings.ScheduleEnabled && !appHolding && active != inSchedule) SetActive(inSchedule);
+            }
+            else if (settings.ScheduleEnabled && inSchedule != lastInSchedule)
+            {
+                // poczatek / koniec harmonogramu; gdy dziala program z listy, decyzja po jego zamknieciu
+                if (appHolding) activeBeforeApp = inSchedule;
+                else SetActive(inSchedule);
+            }
+            lastInSchedule = inSchedule;
+
+            if (appRunning && !lastAppRunning)
+            {
+                activeBeforeApp = active;
+                appHolding = true;
+                if (!active) SetActive(true);
+            }
+            else if (!appRunning && lastAppRunning && appHolding)
+            {
+                appHolding = false;
+                if (active != activeBeforeApp) SetActive(activeBeforeApp);
+            }
+            lastAppRunning = appRunning;
+        }
+
+        // Pierwszy dzialajacy program z listy (nazwa procesu) albo null.
+        string FindRunningApp()
+        {
+            string[] names = Settings.ParseApps(settings.Apps);
+            if (names.Length == 0) return null;
+            HashSet<string> running = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (Process p in Process.GetProcesses())
+            {
+                try { running.Add(p.ProcessName); } catch { }
+                p.Dispose();
+            }
+            foreach (string n in names)
+                if (running.Contains(n)) return n;
+            return null;
+        }
+
         void SetActive(bool on)
         {
             active = on;
@@ -1183,6 +1443,14 @@ namespace AlwaysAwake
             notify.Icon = active ? iconActive : iconInactive;
             UpdateTooltip();
             miToggle.Checked = active;
+            miPauseMenu.Text = pauseUntil.HasValue
+                ? string.Format(L.S("MenuPausedUntil"), pauseUntil.Value.ToString("HH:mm"))
+                : L.S("MenuPause");
+            miResume.Visible = pauseUntil.HasValue;
+            miSchedule.Text = string.Format(L.S("MenuSchedule"),
+                Settings.FormatTime(settings.ScheduleStart) + "–" + Settings.FormatTime(settings.ScheduleEnd));
+            miSchedule.Checked = settings.ScheduleEnabled;
+            miApps.Checked = settings.AppsEnabled;
             miIdle.Checked = settings.IdleAware;
             miJitter.Checked = settings.Jitter;
             miAutoStart.Checked = AutoStart.IsEnabled();
@@ -1228,6 +1496,18 @@ namespace AlwaysAwake
                     text += string.Format(L.S("TipOffIn"),
                         string.Format("{0}:{1:00}", mins / 60, mins % 60));
                 }
+                else if (appHolding && triggerApp != null)
+                {
+                    text += string.Format(L.S("TipApp"), triggerApp);
+                }
+                else if (settings.ScheduleEnabled && lastInSchedule)
+                {
+                    text += string.Format(L.S("TipSchedule"), Settings.FormatTime(settings.ScheduleEnd));
+                }
+            }
+            else if (pauseUntil.HasValue)
+            {
+                text = string.Format(L.S("TipPausedUntil"), pauseUntil.Value.ToString("HH:mm"));
             }
             else
             {
@@ -1237,15 +1517,21 @@ namespace AlwaysAwake
             notify.Text = text;
         }
 
-        void OpenSettings()
+        void OpenSettings() { OpenSettings(0); }
+
+        void OpenSettings(int tab)
         {
             if (settingsForm != null) { settingsForm.Activate(); return; }
             // skrot nieaktywny podczas edycji - inaczej nie da sie go wpisac w pole
             hotkey.Unregister();
-            using (settingsForm = new SettingsForm(settings.Clone(), AutoStart.IsEnabled()))
+            using (settingsForm = new SettingsForm(settings.Clone(), AutoStart.IsEnabled(), tab))
             {
                 if (settingsForm.ShowDialog() == DialogResult.OK)
                 {
+                    bool scheduleChanged = settings.ScheduleEnabled != settingsForm.Result.ScheduleEnabled ||
+                        settings.ScheduleDays != settingsForm.Result.ScheduleDays ||
+                        settings.ScheduleStart != settingsForm.Result.ScheduleStart ||
+                        settings.ScheduleEnd != settingsForm.Result.ScheduleEnd;
                     settings = settingsForm.Result;
                     settings.Save();
                     AutoStart.Set(settingsForm.AutoStartEnabled);
@@ -1254,6 +1540,8 @@ namespace AlwaysAwake
                     ApplyTimerBase();
                     if (active) activationTime = DateTime.Now;
                     ClearKeepAwake();
+                    if (scheduleChanged) automationReady = false; // nowy harmonogram obowiazuje od razu
+                    EvaluateAutomation();
                     UpdateUi();
                     DoKeepAwake(true);
                 }
@@ -1366,7 +1654,7 @@ namespace AlwaysAwake
     }
 
     // ---------------------------------------------------------------
-    // Okno Ustawienia
+    // Okno Ustawienia: zakladki "Ogolne" i "Automatyka"
     // ---------------------------------------------------------------
     public class SettingsForm : Form
     {
@@ -1376,13 +1664,20 @@ namespace AlwaysAwake
         ComboBox cmbMode, cmbAutoOff, cmbLanguage;
         NumericUpDown numInterval, numIdle;
         CheckBox chkJitter, chkIdle, chkStartActive, chkAutoStart, chkUpdates, chkAutoUpdate, chkHotkey;
+        CheckBox chkSchedule, chkApps;
+        CheckBox[] chkDays = new CheckBox[7];
+        DateTimePicker dtFrom, dtTo;
+        TextBox txtApps;
+        Button btnPickApps;
         HotkeyBox hotkeyBox;
         Label hotkeyNote;
         List<int> autoOffValues = new List<int>(new int[] { 0, 30, 60, 120, 240 });
 
         const int x1 = 16, x2 = 210, w2 = 180, h = 26;
+        const int pageWidth = x2 + w2 + x1;
+        Control host; // biezaca zakladka, do ktorej trafiaja kontrolki
 
-        public SettingsForm(Settings s, bool autoStart)
+        public SettingsForm(Settings s, bool autoStart, int tab)
         {
             Result = s;
             AutoStartEnabled = autoStart;
@@ -1393,35 +1688,67 @@ namespace AlwaysAwake
             StartPosition = FormStartPosition.CenterScreen;
             MaximizeBox = false; MinimizeBox = false;
 
-            int y = 16;
+            TabControl tabs = new TabControl();
+            TabPage pageGeneral = new TabPage(L.S("TabGeneral"));
+            TabPage pageAuto = new TabPage(L.S("TabAutomation"));
+            tabs.TabPages.Add(pageGeneral);
+            tabs.TabPages.Add(pageAuto);
+
+            host = pageGeneral;
+            int yGeneral = BuildGeneral(s, autoStart);
+            host = pageAuto;
+            int yAuto = BuildAutomation(s);
+
+            int pageHeight = Math.Max(yGeneral, yAuto) + 8;
+            tabs.SetBounds(8, 8, pageWidth + 8, pageHeight + 26);
+            Controls.Add(tabs);
+            tabs.SelectedIndex = Math.Max(0, Math.Min(tab, 1));
+
+            int y = tabs.Bottom + 12;
+            Button ok = new Button();
+            ok.Text = L.S("Ok"); ok.DialogResult = DialogResult.OK;
+            ok.SetBounds(tabs.Right - 190, y, 90, 28);
+            ok.Click += delegate { ReadBack(); };
+            Controls.Add(ok);
+
+            Button cancel = new Button();
+            cancel.Text = L.S("Cancel"); cancel.DialogResult = DialogResult.Cancel;
+            cancel.SetBounds(tabs.Right - 90, y, 90, 28);
+            Controls.Add(cancel);
+
+            AcceptButton = ok; CancelButton = cancel;
+            ClientSize = new Size(tabs.Right + 8, y + 28 + 12);
+        }
+
+        // ---- zakladka Ogolne; zwraca wysokosc zawartosci ----
+        int BuildGeneral(Settings s, bool autoStart)
+        {
+            int y = 14;
 
             AddLabel(L.S("LblMode"), y);
             cmbMode = new ComboBox();
             cmbMode.DropDownStyle = ComboBoxStyle.DropDownList;
             cmbMode.Items.AddRange(new object[] { "Display", "Input", "Both" });
             cmbMode.SelectedItem = s.Mode;
-            cmbMode.SetBounds(x2, y - 3, w2, h); Controls.Add(cmbMode); y += h + 2;
+            cmbMode.SetBounds(x2, y - 3, w2, h); host.Controls.Add(cmbMode); y += h + 2;
 
-            Label hint = new Label();
-            hint.Text = L.S("ModeHint");
-            hint.ForeColor = Color.Gray;
-            hint.SetBounds(x1, y, x2 + w2 - x1, 20); Controls.Add(hint); y += 26;
+            AddHint(L.S("ModeHint"), x1, ref y, 20);
 
             AddLabel(L.S("LblInterval"), y);
             numInterval = new NumericUpDown();
             numInterval.Minimum = 5; numInterval.Maximum = 3600;
             numInterval.Value = Clamp(s.IntervalSeconds, 5, 3600);
-            numInterval.SetBounds(x2, y - 3, w2, h); Controls.Add(numInterval); y += h + 6;
+            numInterval.SetBounds(x2, y - 3, w2, h); host.Controls.Add(numInterval); y += h + 6;
 
-            chkJitter = AddCheck(L.S("ChkJitter"), s.Jitter, ref y);
+            chkJitter = AddCheck(L.S("ChkJitter"), s.Jitter, x1, ref y);
             y += 4;
-            chkIdle = AddCheck(L.S("ChkIdle"), s.IdleAware, ref y);
+            chkIdle = AddCheck(L.S("ChkIdle"), s.IdleAware, x1, ref y);
 
             AddLabel(L.S("LblIdle"), y);
             numIdle = new NumericUpDown();
             numIdle.Minimum = 10; numIdle.Maximum = 3600;
             numIdle.Value = Clamp(s.IdleThresholdSeconds, 10, 3600);
-            numIdle.SetBounds(x2, y - 3, w2, h); Controls.Add(numIdle); y += h + 6;
+            numIdle.SetBounds(x2, y - 3, w2, h); host.Controls.Add(numIdle); y += h + 6;
 
             AddLabel(L.S("LblAutoOff"), y);
             cmbAutoOff = new ComboBox();
@@ -1429,13 +1756,12 @@ namespace AlwaysAwake
             if (!autoOffValues.Contains(s.AutoOffMinutes)) autoOffValues.Add(s.AutoOffMinutes); // wlasny czas
             foreach (int m in autoOffValues) cmbAutoOff.Items.Add(L.AutoOffLabel(m));
             cmbAutoOff.SelectedIndex = autoOffValues.IndexOf(s.AutoOffMinutes);
-            cmbAutoOff.SetBounds(x2, y - 3, w2, h); Controls.Add(cmbAutoOff); y += h + 10;
+            cmbAutoOff.SetBounds(x2, y - 3, w2, h); host.Controls.Add(cmbAutoOff); y += h + 10;
 
-            chkStartActive = AddCheck(L.S("ChkStartActive"), s.StartActive, ref y);
-            chkAutoStart = AddCheck(L.S("ChkAutoStart"), autoStart, ref y);
-            chkUpdates = AddCheck(L.S("ChkUpdates"), s.CheckUpdates, ref y);
-            chkAutoUpdate = AddCheck(L.S("ChkAutoUpdate"), s.AutoUpdate, ref y);
-            chkAutoUpdate.Left += 18; chkAutoUpdate.Width -= 18;
+            chkStartActive = AddCheck(L.S("ChkStartActive"), s.StartActive, x1, ref y);
+            chkAutoStart = AddCheck(L.S("ChkAutoStart"), autoStart, x1, ref y);
+            chkUpdates = AddCheck(L.S("ChkUpdates"), s.CheckUpdates, x1, ref y);
+            chkAutoUpdate = AddCheck(L.S("ChkAutoUpdate"), s.AutoUpdate, x1 + 18, ref y);
             chkAutoUpdate.Enabled = chkUpdates.Checked;
             chkUpdates.CheckedChanged += delegate { chkAutoUpdate.Enabled = chkUpdates.Checked; };
             y += 8;
@@ -1444,16 +1770,16 @@ namespace AlwaysAwake
             chkHotkey.Text = L.S("ChkHotkey");
             chkHotkey.Checked = s.HotkeyEnabled;
             chkHotkey.SetBounds(x1, y - 2, x2 - x1 - 8, h);
-            Controls.Add(chkHotkey);
+            host.Controls.Add(chkHotkey);
 
             hotkeyBox = new HotkeyBox();
             hotkeyBox.SetBounds(x2, y - 3, w2, h);
-            Controls.Add(hotkeyBox);
+            host.Controls.Add(hotkeyBox);
             y += h + 2;
 
             hotkeyNote = new Label();
-            hotkeyNote.SetBounds(x1, y, x2 + w2 - x1, 32);
-            Controls.Add(hotkeyNote);
+            hotkeyNote.SetBounds(x1, y, pageWidth - 2 * x1, 32);
+            host.Controls.Add(hotkeyNote);
             y += 38;
 
             hotkeyBox.HotkeyChanged += delegate { UpdateHotkeyNote(); };
@@ -1468,21 +1794,104 @@ namespace AlwaysAwake
             cmbLanguage.DropDownStyle = ComboBoxStyle.DropDownList;
             foreach (string code in L.Codes) cmbLanguage.Items.Add(L.LanguageName(code));
             cmbLanguage.SelectedIndex = Math.Max(0, Array.IndexOf(L.Codes, s.Language));
-            cmbLanguage.SetBounds(x2, y - 3, w2, h); Controls.Add(cmbLanguage); y += h + 16;
+            cmbLanguage.SetBounds(x2, y - 3, w2, h); host.Controls.Add(cmbLanguage); y += h;
 
-            Button ok = new Button();
-            ok.Text = L.S("Ok"); ok.DialogResult = DialogResult.OK;
-            ok.SetBounds(x2 + w2 - 190, y, 90, 28);
-            ok.Click += delegate { ReadBack(); };
-            Controls.Add(ok);
+            return y;
+        }
 
-            Button cancel = new Button();
-            cancel.Text = L.S("Cancel"); cancel.DialogResult = DialogResult.Cancel;
-            cancel.SetBounds(x2 + w2 - 90, y, 90, 28);
-            Controls.Add(cancel);
+        // ---- zakladka Automatyka; zwraca wysokosc zawartosci ----
+        int BuildAutomation(Settings s)
+        {
+            int y = 14;
+            const int indent = x1 + 18;
 
-            AcceptButton = ok; CancelButton = cancel;
-            ClientSize = new Size(x2 + w2 + x1, y + 28 + 16);
+            chkSchedule = AddCheck(L.S("ChkSchedule"), s.ScheduleEnabled, x1, ref y);
+            y += 2;
+
+            string[] dayNames = L.S("Days").Split(',');
+            for (int i = 0; i < 7; i++)
+            {
+                chkDays[i] = new CheckBox();
+                chkDays[i].Text = dayNames[i];
+                chkDays[i].Checked = s.DayOn(i);
+                chkDays[i].SetBounds(indent + i * 52, y, 50, h);
+                host.Controls.Add(chkDays[i]);
+            }
+            y += h + 6;
+
+            Label lblFrom = new Label();
+            lblFrom.Text = L.S("LblFrom");
+            lblFrom.SetBounds(indent, y + 3, 40, 20);
+            host.Controls.Add(lblFrom);
+            dtFrom = MakeTimePicker(s.ScheduleStart);
+            dtFrom.SetBounds(indent + 42, y, 80, h);
+            host.Controls.Add(dtFrom);
+
+            Label lblTo = new Label();
+            lblTo.Text = L.S("LblTo");
+            lblTo.SetBounds(indent + 150, y + 3, 40, 20);
+            host.Controls.Add(lblTo);
+            dtTo = MakeTimePicker(s.ScheduleEnd);
+            dtTo.SetBounds(indent + 192, y, 80, h);
+            host.Controls.Add(dtTo);
+            y += h + 6;
+
+            AddHint(L.S("ScheduleHint"), indent, ref y, 34);
+            y += 10;
+
+            chkApps = AddCheck(L.S("ChkApps"), s.AppsEnabled, x1, ref y);
+            y += 2;
+
+            txtApps = new TextBox();
+            txtApps.Multiline = true;
+            txtApps.ScrollBars = ScrollBars.Vertical;
+            txtApps.AcceptsReturn = true;
+            txtApps.Text = string.Join("\r\n", Settings.ParseApps(s.Apps));
+            txtApps.SetBounds(indent, y, pageWidth - indent - x1, 90);
+            host.Controls.Add(txtApps);
+            y += 96;
+
+            btnPickApps = new Button();
+            btnPickApps.Text = L.S("BtnPickApps");
+            btnPickApps.SetBounds(indent, y, 200, 28);
+            btnPickApps.Click += delegate { PickApps(); };
+            host.Controls.Add(btnPickApps);
+            y += 34;
+
+            AddHint(L.S("AppsHint"), indent, ref y, 48);
+
+            chkSchedule.CheckedChanged += delegate { UpdateAutomationEnabled(); };
+            chkApps.CheckedChanged += delegate { UpdateAutomationEnabled(); };
+            UpdateAutomationEnabled();
+            return y;
+        }
+
+        static DateTimePicker MakeTimePicker(int minutes)
+        {
+            DateTimePicker dt = new DateTimePicker();
+            dt.Format = DateTimePickerFormat.Custom;
+            dt.CustomFormat = "HH:mm";
+            dt.ShowUpDown = true;
+            dt.Value = DateTime.Today.AddMinutes(minutes);
+            return dt;
+        }
+
+        void UpdateAutomationEnabled()
+        {
+            foreach (CheckBox c in chkDays) c.Enabled = chkSchedule.Checked;
+            dtFrom.Enabled = dtTo.Enabled = chkSchedule.Checked;
+            txtApps.Enabled = btnPickApps.Enabled = chkApps.Checked;
+        }
+
+        void PickApps()
+        {
+            using (AppPickerForm f = new AppPickerForm())
+            {
+                if (f.ShowDialog(this) != DialogResult.OK || f.Selected.Count == 0) return;
+                List<string> all = new List<string>(Settings.ParseApps(txtApps.Text));
+                all.AddRange(f.Selected);
+                txtApps.Text = string.Join("\r\n", Settings.ParseApps(string.Join(";", all.ToArray())));
+            }
         }
 
         void UpdateHotkeyNote()
@@ -1503,16 +1912,26 @@ namespace AlwaysAwake
         {
             Label l = new Label();
             l.Text = text; l.SetBounds(x1, y, x2 - x1 - 8, 22);
-            Controls.Add(l);
+            host.Controls.Add(l);
         }
 
-        CheckBox AddCheck(string text, bool value, ref int y)
+        void AddHint(string text, int x, ref int y, int height)
+        {
+            Label l = new Label();
+            l.Text = text;
+            l.ForeColor = Color.Gray;
+            l.SetBounds(x, y, pageWidth - x - x1 + 8, height);
+            host.Controls.Add(l);
+            y += height + 6;
+        }
+
+        CheckBox AddCheck(string text, bool value, int x, ref int y)
         {
             CheckBox c = new CheckBox();
             c.Text = text;
             c.Checked = value;
-            c.SetBounds(x1, y, x2 + w2 - x1, h);
-            Controls.Add(c);
+            c.SetBounds(x, y, pageWidth - x - x1 + 8, h);
+            host.Controls.Add(c);
             y += h;
             return c;
         }
@@ -1538,7 +1957,95 @@ namespace AlwaysAwake
             Result.HotkeyEnabled = chkHotkey.Checked && hotkeyBox.Key != Keys.None;
             if (hotkeyBox.Key != Keys.None) Result.Hotkey = hotkeyBox.Value;
             Result.Language = L.Codes[cmbLanguage.SelectedIndex];
+
+            Result.ScheduleEnabled = chkSchedule.Checked;
+            StringBuilder days = new StringBuilder();
+            foreach (CheckBox c in chkDays) days.Append(c.Checked ? '1' : '0');
+            Result.ScheduleDays = days.ToString();
+            Result.ScheduleStart = dtFrom.Value.Hour * 60 + dtFrom.Value.Minute;
+            Result.ScheduleEnd = dtTo.Value.Hour * 60 + dtTo.Value.Minute;
+            Result.Apps = string.Join(";", Settings.ParseApps(txtApps.Text));
+            Result.AppsEnabled = chkApps.Checked && Result.Apps.Length > 0;
+
             AutoStartEnabled = chkAutoStart.Checked;
+        }
+    }
+
+    // ---------------------------------------------------------------
+    // Wybor programow z listy uruchomionych (procesy z oknami).
+    // ---------------------------------------------------------------
+    public class AppPickerForm : Form
+    {
+        public List<string> Selected = new List<string>();
+        ListBox list;
+
+        public AppPickerForm()
+        {
+            Text = L.S("PickTitle");
+            try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
+            FormBorderStyle = FormBorderStyle.FixedDialog;
+            StartPosition = FormStartPosition.CenterParent;
+            MaximizeBox = false; MinimizeBox = false;
+            ShowInTaskbar = false;
+
+            Label hint = new Label();
+            hint.Text = L.S("PickHint");
+            hint.SetBounds(12, 12, 360, 20);
+            Controls.Add(hint);
+
+            list = new ListBox();
+            list.SelectionMode = SelectionMode.MultiExtended;
+            list.IntegralHeight = false;
+            list.SetBounds(12, 36, 360, 260);
+            list.DoubleClick += delegate { if (list.SelectedItems.Count > 0) { ReadBack(); DialogResult = DialogResult.OK; } };
+            Controls.Add(list);
+
+            // nazwa procesu + tytul okna, bez duplikatow i bez samego AA
+            SortedDictionary<string, string> apps = new SortedDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            int self = Process.GetCurrentProcess().Id;
+            foreach (Process p in Process.GetProcesses())
+            {
+                try
+                {
+                    if (p.Id != self && p.MainWindowHandle != IntPtr.Zero && p.MainWindowTitle.Length > 0 &&
+                        !apps.ContainsKey(p.ProcessName))
+                        apps[p.ProcessName] = p.MainWindowTitle;
+                }
+                catch { }
+                p.Dispose();
+            }
+            foreach (KeyValuePair<string, string> kv in apps)
+            {
+                string title = kv.Value.Length > 40 ? kv.Value.Substring(0, 40) + "..." : kv.Value;
+                list.Items.Add(new PickItem(kv.Key, kv.Key + "   (" + title + ")"));
+            }
+
+            Button ok = new Button();
+            ok.Text = L.S("Add"); ok.DialogResult = DialogResult.OK;
+            ok.SetBounds(372 - 190, 308, 90, 28);
+            ok.Click += delegate { ReadBack(); };
+            Controls.Add(ok);
+
+            Button cancel = new Button();
+            cancel.Text = L.S("Cancel"); cancel.DialogResult = DialogResult.Cancel;
+            cancel.SetBounds(372 - 90, 308, 90, 28);
+            Controls.Add(cancel);
+
+            AcceptButton = ok; CancelButton = cancel;
+            ClientSize = new Size(384, 348);
+        }
+
+        void ReadBack()
+        {
+            Selected.Clear();
+            foreach (PickItem it in list.SelectedItems) Selected.Add(it.Name);
+        }
+
+        class PickItem
+        {
+            public string Name, Display;
+            public PickItem(string name, string display) { Name = name; Display = display; }
+            public override string ToString() { return Display; }
         }
     }
 

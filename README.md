@@ -17,6 +17,14 @@ Jeden samodzielny plik `.exe`, bez instalacji i bez zależności poza .NET Frame
   jesteś bezczynny przez zadany czas, więc program nie przeszkadza podczas pracy.
 - **Auto-wyłącznik** — po 30 min / 1 / 2 / 4 godz., po własnej liczbie minut albo
   o wybranej godzinie (np. „do 17:00”) program sam się wstrzymuje.
+- **Harmonogram** — AA działa tylko w wybrane dni i godziny (np. pon–pt 8:00–17:00,
+  także przez północ, np. 22:00–6:00) i sam się wstrzymuje poza nimi.
+- **Aktywacja przy programach** — AA włącza się, gdy działa któryś z wybranych programów
+  (np. PowerPoint, Teams, vlc), i wraca do poprzedniego stanu po jego zamknięciu.
+  Programy można dodać z listy uruchomionych.
+- **Wstrzymaj na 15 min / 30 min / 1 / 2 godz.** — przerwa, po której AA wraca samo.
+- Automatyka reaguje tylko na zmiany (start/koniec harmonogramu, start/zamknięcie
+  programu, koniec pauzy), więc ręczne włączenie/wyłączenie obowiązuje do następnej zmiany.
 - **Skrót klawiszowy** — domyślnie `Ctrl+Alt+K` włącza/wyłącza AA z dowolnego miejsca.
   Można go zmienić lub wyłączyć w ustawieniach (ostrzeżenie, gdy koliduje z AltGr,
   np. `Ctrl+Alt+A` = „ą”).
@@ -67,7 +75,8 @@ w kodzie, budowanie zakończy się błędem.
 
 Uruchom `AA.exe` — pojawi się kropka w zasobniku.
 
-- **Prawy klik** → menu: Aktywne, Tryb, Auto-wyłącz po, Tryb bezczynności,
+- **Prawy klik** → menu: Aktywne, Wstrzymaj na, Tryb, Auto-wyłącz po, Harmonogram,
+  Włączaj przy programach, Tryb bezczynności,
   Jitter, Uruchamiaj przy starcie, Język, Ustawienia, Sprawdź aktualizacje,
   O programie, Zakończ.
 - **Ctrl+Alt+K** (domyślnie) → szybkie włącz/wyłącz z klawiatury.
