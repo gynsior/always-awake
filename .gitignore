@@ -1,0 +1,14 @@
+# Wynik kompilacji (dystrybucja przez Releases, nie przez repo)
+AA.exe
+*.exe
+*.pdb
+
+# Lokalne ustawienia uzytkownika
+settings.ini
+
+# Pliki tymczasowe / IDE
+*.user
+*.suo
+.vs/
+bin/
+obj/
