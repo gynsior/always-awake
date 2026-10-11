@@ -42,6 +42,20 @@ W folderze z `AA.cs` i `AA.ico` uruchom w PowerShell:
 & "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /codepage:65001 /target:winexe /out:AA.exe /win32icon:AA.ico /reference:System.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll AA.cs
 ```
 
+### Automatyczne budowanie (GitHub Actions)
+
+Każdy push na `main` buduje `AA.exe` na GitHubie (plik do pobrania w zakładce
+**Actions** jako artefakt). Nowe wydanie: podnieś `AppInfo.Version` w `AA.cs`
+(oraz `AssemblyVersion`), zrób commit i wypchnij tag, np.:
+
+```powershell
+git tag v2.3
+git push origin v2.3
+```
+
+GitHub sam zbuduje `AA.exe` i utworzy release. Jeśli tag nie zgadza się z wersją
+w kodzie, budowanie zakończy się błędem.
+
 ## Użycie
 
 Uruchom `AA.exe` — pojawi się kropka w zasobniku.

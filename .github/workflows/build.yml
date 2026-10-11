@@ -1,0 +1,68 @@
+# Buduje AA.exe na Windows.
+# - push / pull request na main: tylko kompilacja (AA.exe do pobrania jako artefakt).
+# - tag v* (np. v2.3): kompilacja + release na GitHubie z AA.exe.
+#   Wersja w tagu musi zgadzac sie z AppInfo.Version w AA.cs.
+
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compile AA.exe
+        shell: pwsh
+        run: |
+          $csc = "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
+          & $csc /nologo /codepage:65001 /target:winexe /out:AA.exe /win32icon:AA.ico `
+            /reference:System.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll AA.cs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $v = (Get-Item .\AA.exe).VersionInfo.FileVersion
+          $sha = (Get-FileHash .\AA.exe -Algorithm SHA256).Hash.ToLower()
+          "Built AA.exe $v, SHA-256 $sha"
+          "SHA256=$sha" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Check tag matches AppInfo.Version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $m = Select-String -Path AA.cs -Pattern 'Version = "([^"]+)"' | Select-Object -First 1
+          $code = $m.Matches[0].Groups[1].Value
+          $tag = "${{ github.ref_name }}".TrimStart('v')
+          if ($code -ne $tag) {
+            Write-Error "Tag v$tag does not match AppInfo.Version $code in AA.cs"
+            exit 1
+          }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AA
+          path: AA.exe
+
+      - name: Create release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $notes = @"
+          Pobierz ``AA.exe`` i uruchom - bez instalacji (wymaga .NET Framework 4, obecnego w Windows 10/11).
+          Plik nie jest podpisany, więc SmartScreen może pokazać ostrzeżenie: **Więcej informacji -> Uruchom mimo to**.
+
+          SHA-256: ``$env:SHA256``
+          "@
+          gh release create "${{ github.ref_name }}" AA.exe `
+            --title "AA - Always Awake ${{ github.ref_name }}" `
+            --notes $notes --generate-notes
