@@ -8,6 +8,7 @@ using System.IO;
 using System.Net;
 using System.Runtime.InteropServices;
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
@@ -16,8 +17,8 @@ using System.Windows.Forms;
 [assembly: AssemblyDescription("Utrzymuje komputer aktywnym (zapobiega wygaszeniu i blokadzie ekranu)")]
 [assembly: AssemblyProduct("AA - Always Awake")]
 [assembly: AssemblyCopyright("Copyright (c) 2026 Galeziok")]
-[assembly: AssemblyVersion("2.3.0.0")]
-[assembly: AssemblyFileVersion("2.3.0.0")]
+[assembly: AssemblyVersion("2.4.0.0")]
+[assembly: AssemblyFileVersion("2.4.0.0")]
 
 namespace AlwaysAwake
 {
@@ -34,9 +35,18 @@ namespace AlwaysAwake
             Settings settings = Settings.Load();
             L.Init(settings.Language);
 
-            bool createdNew;
-            // Nazwa z "Local\" => jedna instancja na sesje uzytkownika.
-            mutex = new System.Threading.Mutex(true, "Local\\AA_AlwaysAwake_SingleInstance", out createdNew);
+            // Po aktualizacji stara wersja moze jeszcze konczyc prace - poczekaj na nia do 10 s.
+            bool afterUpdate = Array.Exists(args, delegate(string a) { return a.TrimStart('-', '/').ToLowerInvariant() == "updated"; });
+            bool createdNew = false;
+            DateTime waitUntil = DateTime.Now.AddSeconds(afterUpdate ? 10 : 0);
+            while (true)
+            {
+                // Nazwa z "Local\" => jedna instancja na sesje uzytkownika.
+                mutex = new System.Threading.Mutex(true, "Local\\AA_AlwaysAwake_SingleInstance", out createdNew);
+                if (createdNew || DateTime.Now >= waitUntil) break;
+                mutex.Close();
+                System.Threading.Thread.Sleep(250);
+            }
             if (!createdNew) // juz dziala - nie uruchamiaj drugiej
             {
                 MessageBox.Show(L.S("AlreadyRunning"), AppInfo.Name,
@@ -62,7 +72,7 @@ namespace AlwaysAwake
     static class AppInfo
     {
         public const string Name = "AA - Always Awake";
-        public const string Version = "2.3";
+        public const string Version = "2.4";
         public const string Author = "Galeziok";
         public const string AuthorUrl = "https://github.com/gynsior";
         public const string RepoUrl = "https://github.com/gynsior/always-awake";
@@ -78,6 +88,13 @@ namespace AlwaysAwake
     // ---------------------------------------------------------------
     // Sprawdzanie aktualizacji (GitHub Releases)
     // ---------------------------------------------------------------
+    class ReleaseInfo
+    {
+        public string Version;      // np. "2.4"
+        public string DownloadUrl;  // link do AA.exe w zalacznikach release'u
+        public string Sha256;       // suma z opisu release'u ("SHA-256: `...`")
+    }
+
     static class Updates
     {
         // Wyciaga wersje z odpowiedzi API, np. "tag_name": "v2.3" -> "2.3".
@@ -86,6 +103,30 @@ namespace AlwaysAwake
             if (json == null) return null;
             Match m = Regex.Match(json, "\"tag_name\"\\s*:\\s*\"v?([0-9][^\"]*)\"");
             return m.Success ? m.Groups[1].Value : null;
+        }
+
+        public static ReleaseInfo Parse(string json)
+        {
+            string tag = ParseTag(json);
+            if (tag == null) return null;
+            ReleaseInfo r = new ReleaseInfo();
+            r.Version = tag;
+            Match url = Regex.Match(json, "\"browser_download_url\"\\s*:\\s*\"([^\"]*/AA\\.exe)\"", RegexOptions.IgnoreCase);
+            if (url.Success) r.DownloadUrl = url.Groups[1].Value;
+            Match sha = Regex.Match(json, "SHA-256:\\s*`?([0-9a-fA-F]{64})");
+            if (sha.Success) r.Sha256 = sha.Groups[1].Value.ToLowerInvariant();
+            return r;
+        }
+
+        public static string FileSha256(string path)
+        {
+            using (SHA256 sha = SHA256.Create())
+            using (FileStream fs = File.OpenRead(path))
+            {
+                StringBuilder sb = new StringBuilder();
+                foreach (byte b in sha.ComputeHash(fs)) sb.Append(b.ToString("x2"));
+                return sb.ToString();
+            }
         }
 
         public static bool IsNewer(string remote, string local)
@@ -180,12 +221,20 @@ namespace AlwaysAwake
                                        "Die Tastenkombination {0} wird bereits von einem anderen Programm verwendet. Ändern Sie sie in den Einstellungen." } },
 
             // --- aktualizacje ---
-            { "UpdateBalloon", new[] { "Dostępna nowa wersja {0}. Kliknij, aby otworzyć stronę pobierania.",
-                                       "Version {0} is available. Click to open the download page.",
-                                       "Version {0} ist verfügbar. Klicken Sie, um die Download-Seite zu öffnen." } },
-            { "UpdateAsk",     new[] { "Dostępna jest nowa wersja {0} (masz {1}).\n\nOtworzyć stronę pobierania?",
-                                       "A new version {0} is available (you have {1}).\n\nOpen the download page?",
-                                       "Eine neue Version {0} ist verfügbar (installiert: {1}).\n\nDownload-Seite öffnen?" } },
+            { "UpdateBalloon", new[] { "Dostępna nowa wersja {0}. Kliknij, aby zaktualizować.",
+                                       "Version {0} is available. Click to update.",
+                                       "Version {0} ist verfügbar. Klicken Sie zum Aktualisieren." } },
+            { "UpdateAsk",     new[] { "Dostępna jest nowa wersja {0} (masz {1}).\n\nZaktualizować teraz? AA pobierze nową wersję i uruchomi się ponownie.",
+                                       "A new version {0} is available (you have {1}).\n\nUpdate now? AA will download the new version and restart.",
+                                       "Eine neue Version {0} ist verfügbar (installiert: {1}).\n\nJetzt aktualisieren? AA lädt die neue Version herunter und startet neu." } },
+            { "UpdateDownloading", new[] { "Pobieranie wersji {0}...", "Downloading version {0}...", "Version {0} wird heruntergeladen..." } },
+            { "UpdateDone",    new[] { "Zaktualizowano AA do wersji {0}.", "AA has been updated to version {0}.", "AA wurde auf Version {0} aktualisiert." } },
+            { "UpdateFailed",  new[] { "Nie udało się zainstalować aktualizacji ({0}).\n\nOtworzyć stronę pobierania, aby zaktualizować ręcznie?",
+                                       "Could not install the update ({0}).\n\nOpen the download page to update manually?",
+                                       "Das Update konnte nicht installiert werden ({0}).\n\nDownload-Seite öffnen, um manuell zu aktualisieren?" } },
+            { "UpdateFailedBalloon", new[] { "Automatyczna aktualizacja nie powiodła się. Kliknij, aby pobrać ręcznie.",
+                                             "Automatic update failed. Click to download manually.",
+                                             "Automatisches Update fehlgeschlagen. Klicken Sie zum manuellen Download." } },
             { "UpdateNone",    new[] { "Masz najnowszą wersję ({0}).",
                                        "You have the latest version ({0}).",
                                        "Sie haben die neueste Version ({0})." } },
@@ -221,6 +270,7 @@ namespace AlwaysAwake
             { "ChkStartActive", new[] { "Startuj jako aktywne", "Start as active", "Aktiv starten" } },
             { "ChkAutoStart",  new[] { "Uruchamiaj przy starcie systemu", "Run at Windows startup", "Mit Windows starten" } },
             { "ChkUpdates",    new[] { "Sprawdzaj aktualizacje automatycznie", "Check for updates automatically", "Automatisch nach Updates suchen" } },
+            { "ChkAutoUpdate", new[] { "Instaluj aktualizacje automatycznie", "Install updates automatically", "Updates automatisch installieren" } },
             { "LblLanguage",   new[] { "Język:", "Language:", "Sprache:" } },
             { "ChkHotkey",     new[] { "Skrót klawiszowy:", "Keyboard shortcut:", "Tastenkombination:" } },
             { "HotkeyNone",    new[] { "(brak)", "(none)", "(keine)" } },
@@ -401,6 +451,7 @@ namespace AlwaysAwake
         public int AutoOffMinutes = 0;         // 0 = nigdy
         public string Language = "Auto";       // Auto | pl | en | de
         public bool CheckUpdates = true;
+        public bool AutoUpdate = true;
         public bool HotkeyEnabled = true;
         public string Hotkey = "Ctrl+Alt+K";
 
@@ -459,6 +510,7 @@ namespace AlwaysAwake
                                 if (Array.IndexOf(L.Codes, v) >= 0) s.Language = v;
                                 break;
                             case "CheckUpdates": s.CheckUpdates = ParseBool(v, s.CheckUpdates); break;
+                            case "AutoUpdate": s.AutoUpdate = ParseBool(v, s.AutoUpdate); break;
                             case "HotkeyEnabled": s.HotkeyEnabled = ParseBool(v, s.HotkeyEnabled); break;
                             case "Hotkey":
                                 if (HotkeyText.TryParse(v, out hm, out hk)) s.Hotkey = HotkeyText.Format(hm, hk);
@@ -488,6 +540,7 @@ namespace AlwaysAwake
                 sb.AppendLine("AutoOffMinutes=" + AutoOffMinutes);
                 sb.AppendLine("Language=" + Language);
                 sb.AppendLine("CheckUpdates=" + CheckUpdates);
+                sb.AppendLine("AutoUpdate=" + AutoUpdate);
                 sb.AppendLine("HotkeyEnabled=" + HotkeyEnabled);
                 sb.AppendLine("Hotkey=" + Hotkey);
                 File.WriteAllText(FilePath(), sb.ToString());
@@ -498,13 +551,13 @@ namespace AlwaysAwake
         public Settings Clone() { return (Settings)this.MemberwiseClone(); }
 
         // Argumenty wiersza polecen nadpisuja ustawienia na starcie:
-        //   -Mode Display|Input|Both  -IntervalSeconds <n>  -Inactive
+        //   -Mode Display|Input|Both  -IntervalSeconds <n>  -Active | -Inactive
         // Akceptowane prefiksy: -, --, /; wielkosc liter bez znaczenia.
-        // Zwraca true, gdy podano -Inactive (start wstrzymany, bez zmiany StartActive).
-        public bool ApplyArgs(string[] args)
+        // Zwraca wymuszony stan startowy (-Active/-Inactive) albo null; StartActive sie nie zmienia.
+        public bool? ApplyArgs(string[] args)
         {
-            bool inactive = false;
-            if (args == null) return inactive;
+            bool? forced = null;
+            if (args == null) return forced;
             for (int i = 0; i < args.Length; i++)
             {
                 string k = args[i].TrimStart('-', '/').ToLowerInvariant();
@@ -522,12 +575,15 @@ namespace AlwaysAwake
                         if (v != null && int.TryParse(v, out n) && n > 0) IntervalSeconds = n;
                         i++;
                         break;
+                    case "active":
+                        forced = true;
+                        break;
                     case "inactive":
-                        inactive = true;
+                        forced = false;
                         break;
                 }
             }
-            return inactive;
+            return forced;
         }
     }
 
@@ -619,9 +675,10 @@ namespace AlwaysAwake
         DateTime? untilTime;       // "wylacz o godzinie" - tylko do konca sesji, nie zapisywane
 
         DateTime nextUpdateCheck;
-        bool updateCheckRunning;
+        bool updateCheckRunning, updateInstalling;
         string notifiedVersion;    // zeby nie pokazywac dymka o tej samej wersji wiele razy
-        string balloonUrl;         // link otwierany po kliknieciu w dymek (null = brak)
+        Action balloonAction;      // co zrobic po kliknieciu w dymek (null = nic)
+        bool oldExePending;        // AA.exe.old po aktualizacji - do usuniecia
 
         Icon iconActive, iconInactive;
         ToolStripMenuItem miToggle, miModeMenu, miAutoOffMenu, miAutoOffCustom, miAutoStart, miIdle, miJitter;
@@ -636,8 +693,8 @@ namespace AlwaysAwake
         public TrayContext(Settings loaded, string[] args)
         {
             settings = loaded;
-            bool argInactive = settings.ApplyArgs(args);
-            active = settings.StartActive && !argInactive;
+            bool? forced = settings.ApplyArgs(args);
+            active = forced ?? settings.StartActive;
 
             iconActive   = MakeDot(Color.FromArgb(40, 180, 70));
             iconInactive = MakeDot(Color.FromArgb(150, 150, 150));
@@ -648,7 +705,12 @@ namespace AlwaysAwake
             notify.ContextMenuStrip = BuildContextMenu();
             notify.Visible = true;
             notify.DoubleClick += delegate { SetActive(!active); };
-            notify.BalloonTipClicked += delegate { if (balloonUrl != null) AppInfo.OpenUrl(balloonUrl); };
+            notify.BalloonTipClicked += delegate
+            {
+                Action a = balloonAction;
+                balloonAction = null;
+                if (a != null) a();
+            };
 
             timer = new Timer();
             timer.Tick += delegate { OnTick(); };
@@ -673,6 +735,11 @@ namespace AlwaysAwake
             ApplyHotkey(true);
             UpdateUi();
             DoKeepAwake(true);
+
+            oldExePending = File.Exists(OldExePath());
+            DeleteOldExe();
+            if (Array.Exists(args, delegate(string a) { return a.TrimStart('-', '/').ToLowerInvariant() == "updated"; }))
+                ShowBalloon(string.Format(L.S("UpdateDone"), AppInfo.Version), ToolTipIcon.Info, null, 5000);
         }
 
         // ---- budowa menu ----
@@ -806,9 +873,9 @@ namespace AlwaysAwake
             UpdateUi();
         }
 
-        void ShowBalloon(string text, ToolTipIcon icon, string url, int ms)
+        void ShowBalloon(string text, ToolTipIcon icon, Action onClick, int ms)
         {
-            balloonUrl = url;
+            balloonAction = onClick;
             notify.ShowBalloonTip(ms, "AA", text, icon);
         }
 
@@ -881,9 +948,9 @@ namespace AlwaysAwake
                 wc.DownloadStringCompleted += delegate(object s, DownloadStringCompletedEventArgs e)
                 {
                     updateCheckRunning = false;
-                    string tag = (e.Error == null && !e.Cancelled) ? Updates.ParseTag(e.Result) : null;
+                    ReleaseInfo info = (e.Error == null && !e.Cancelled) ? Updates.Parse(e.Result) : null;
                     wc.Dispose();
-                    OnUpdateResult(tag, manual);
+                    OnUpdateResult(info, manual);
                 };
                 wc.DownloadStringAsync(new Uri(AppInfo.LatestApiUrl));
             }
@@ -894,32 +961,127 @@ namespace AlwaysAwake
             }
         }
 
-        void OnUpdateResult(string latest, bool manual)
+        void OnUpdateResult(ReleaseInfo info, bool manual)
         {
-            if (latest == null)
+            if (info == null)
             {
                 if (manual)
                     MessageBox.Show(L.S("UpdateError"), AppInfo.Name, MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
-            if (Updates.IsNewer(latest, AppInfo.Version))
+            if (!Updates.IsNewer(info.Version, AppInfo.Version))
             {
                 if (manual)
-                {
-                    if (MessageBox.Show(string.Format(L.S("UpdateAsk"), latest, AppInfo.Version), AppInfo.Name,
-                            MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
-                        AppInfo.OpenUrl(AppInfo.ReleasesUrl);
-                }
-                else if (notifiedVersion != latest)
-                {
-                    notifiedVersion = latest;
-                    ShowBalloon(string.Format(L.S("UpdateBalloon"), latest), ToolTipIcon.Info, AppInfo.ReleasesUrl, 10000);
-                }
+                    MessageBox.Show(string.Format(L.S("UpdateNone"), AppInfo.Version), AppInfo.Name,
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
             }
-            else if (manual)
+
+            if (manual)
             {
-                MessageBox.Show(string.Format(L.S("UpdateNone"), AppInfo.Version), AppInfo.Name,
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                if (AskUpdate(info)) InstallUpdate(info, true);
+            }
+            else if (settings.AutoUpdate && !untilTime.HasValue &&
+                     settingsForm == null && aboutForm == null && autoOffForm == null)
+            {
+                // instalacja w tle; pomijana, gdy uzytkownik ma otwarte okno albo "do godziny"
+                InstallUpdate(info, false);
+            }
+            else if (notifiedVersion != info.Version)
+            {
+                notifiedVersion = info.Version;
+                ShowBalloon(string.Format(L.S("UpdateBalloon"), info.Version), ToolTipIcon.Info,
+                    delegate { if (AskUpdate(info)) InstallUpdate(info, true); }, 10000);
+            }
+        }
+
+        bool AskUpdate(ReleaseInfo info)
+        {
+            return MessageBox.Show(string.Format(L.S("UpdateAsk"), info.Version, AppInfo.Version), AppInfo.Name,
+                MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes;
+        }
+
+        static string OldExePath() { return Application.ExecutablePath + ".old"; }
+
+        void DeleteOldExe()
+        {
+            if (!oldExePending) return;
+            try { File.Delete(OldExePath()); } catch { }
+            oldExePending = File.Exists(OldExePath());
+        }
+
+        // Pobiera AA.exe z release'u, sprawdza SHA-256, podmienia plik i uruchamia nowa wersje.
+        // Dzialajacego exe nie mozna nadpisac, ale mozna go przemianowac na AA.exe.old.
+        void InstallUpdate(ReleaseInfo info, bool interactive)
+        {
+            if (updateInstalling) return;
+            if (info.DownloadUrl == null || info.Sha256 == null)
+            {
+                UpdateFailed("release without AA.exe / SHA-256", interactive);
+                return;
+            }
+            updateInstalling = true;
+            string exe = Application.ExecutablePath;
+            string tmp = exe + ".new";
+            if (interactive)
+                ShowBalloon(string.Format(L.S("UpdateDownloading"), info.Version), ToolTipIcon.Info, null, 3000);
+            try
+            {
+                ServicePointManager.SecurityProtocol |= (SecurityProtocolType)3072; // TLS 1.2
+                WebClient wc = new WebClient();
+                wc.Headers[HttpRequestHeader.UserAgent] = "AA-AlwaysAwake/" + AppInfo.Version;
+                wc.DownloadFileCompleted += delegate(object s, System.ComponentModel.AsyncCompletedEventArgs e)
+                {
+                    wc.Dispose();
+                    string error = null;
+                    try
+                    {
+                        if (e.Error != null) throw e.Error;
+                        if (e.Cancelled) throw new Exception("cancelled");
+                        if (Updates.FileSha256(tmp) != info.Sha256) throw new Exception("SHA-256 mismatch");
+                        string old = OldExePath();
+                        if (File.Exists(old)) File.Delete(old);
+                        File.Move(exe, old);
+                        try { File.Move(tmp, exe); }
+                        catch { File.Move(old, exe); throw; }
+                    }
+                    catch (Exception ex) { error = ex.Message; }
+
+                    if (error == null)
+                    {
+                        try { Process.Start(exe, "--updated " + (active ? "-Active" : "-Inactive")); }
+                        catch (Exception ex) { error = ex.Message; }
+                    }
+                    if (error != null)
+                    {
+                        try { if (File.Exists(tmp)) File.Delete(tmp); } catch { }
+                        updateInstalling = false;
+                        UpdateFailed(error, interactive);
+                        return;
+                    }
+                    ExitApp(); // nowa wersja czeka na zwolnienie mutexu
+                };
+                wc.DownloadFileAsync(new Uri(info.DownloadUrl), tmp);
+            }
+            catch (Exception ex)
+            {
+                updateInstalling = false;
+                UpdateFailed(ex.Message, interactive);
+            }
+        }
+
+        void UpdateFailed(string reason, bool interactive)
+        {
+            if (interactive)
+            {
+                if (MessageBox.Show(string.Format(L.S("UpdateFailed"), reason), AppInfo.Name,
+                        MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
+                    AppInfo.OpenUrl(AppInfo.ReleasesUrl);
+            }
+            else
+            {
+                ShowBalloon(L.S("UpdateFailedBalloon"), ToolTipIcon.Warning,
+                    delegate { AppInfo.OpenUrl(AppInfo.ReleasesUrl); }, 10000);
             }
         }
 
@@ -970,6 +1132,7 @@ namespace AlwaysAwake
                 }
                 else UpdateTooltip();
             }
+            DeleteOldExe(); // zaraz po aktualizacji stary plik moze byc jeszcze zablokowany
             if (settings.CheckUpdates && DateTime.Now >= nextUpdateCheck)
             {
                 nextUpdateCheck = DateTime.Now.AddHours(24);
@@ -1212,7 +1375,7 @@ namespace AlwaysAwake
 
         ComboBox cmbMode, cmbAutoOff, cmbLanguage;
         NumericUpDown numInterval, numIdle;
-        CheckBox chkJitter, chkIdle, chkStartActive, chkAutoStart, chkUpdates, chkHotkey;
+        CheckBox chkJitter, chkIdle, chkStartActive, chkAutoStart, chkUpdates, chkAutoUpdate, chkHotkey;
         HotkeyBox hotkeyBox;
         Label hotkeyNote;
         List<int> autoOffValues = new List<int>(new int[] { 0, 30, 60, 120, 240 });
@@ -1271,6 +1434,10 @@ namespace AlwaysAwake
             chkStartActive = AddCheck(L.S("ChkStartActive"), s.StartActive, ref y);
             chkAutoStart = AddCheck(L.S("ChkAutoStart"), autoStart, ref y);
             chkUpdates = AddCheck(L.S("ChkUpdates"), s.CheckUpdates, ref y);
+            chkAutoUpdate = AddCheck(L.S("ChkAutoUpdate"), s.AutoUpdate, ref y);
+            chkAutoUpdate.Left += 18; chkAutoUpdate.Width -= 18;
+            chkAutoUpdate.Enabled = chkUpdates.Checked;
+            chkUpdates.CheckedChanged += delegate { chkAutoUpdate.Enabled = chkUpdates.Checked; };
             y += 8;
 
             chkHotkey = new CheckBox();
@@ -1367,6 +1534,7 @@ namespace AlwaysAwake
             Result.AutoOffMinutes = autoOffValues[cmbAutoOff.SelectedIndex];
             Result.StartActive = chkStartActive.Checked;
             Result.CheckUpdates = chkUpdates.Checked;
+            Result.AutoUpdate = chkAutoUpdate.Checked;
             Result.HotkeyEnabled = chkHotkey.Checked && hotkeyBox.Key != Keys.None;
             if (hotkeyBox.Key != Keys.None) Result.Hotkey = hotkeyBox.Value;
             Result.Language = L.Codes[cmbLanguage.SelectedIndex];

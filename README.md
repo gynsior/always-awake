@@ -20,8 +20,9 @@ Jeden samodzielny plik `.exe`, bez instalacji i bez zależności poza .NET Frame
 - **Skrót klawiszowy** — domyślnie `Ctrl+Alt+K` włącza/wyłącza AA z dowolnego miejsca.
   Można go zmienić lub wyłączyć w ustawieniach (ostrzeżenie, gdy koliduje z AltGr,
   np. `Ctrl+Alt+A` = „ą”).
-- **Sprawdzanie aktualizacji** — raz dziennie (i na żądanie z menu) program sprawdza
-  GitHub Releases i pokazuje dymek, gdy jest nowsza wersja. Można wyłączyć w ustawieniach.
+- **Automatyczne aktualizacje** — raz dziennie (i na żądanie z menu) program sprawdza
+  GitHub Releases; nową wersję sam pobiera, weryfikuje (SHA-256), podmienia i uruchamia
+  ponownie. W ustawieniach można wyłączyć instalację (wtedy tylko pyta) lub całe sprawdzanie.
 - **Jitter interwału** — opcjonalne losowe wahanie odstępu (±10%).
 - **Zapamiętywanie ustawień** — `%AppData%\AA\settings.ini`.
 - **Autostart** — skrót w folderze Startup użytkownika (bez rejestru, bez admina).
@@ -76,12 +77,12 @@ Argumenty wiersza poleceń (opcjonalne, nadpisują zapisane ustawienia na starci
 wielkość liter bez znaczenia, działają też prefiksy `--` i `/`):
 
 ```
-AA.exe -Mode Display|Input|Both  -IntervalSeconds <n>  -Inactive
+AA.exe -Mode Display|Input|Both  -IntervalSeconds <n>  -Active|-Inactive
 ```
 
 - `-Mode` — tryb pracy,
 - `-IntervalSeconds` — co ile sekund odświeżać,
-- `-Inactive` — start w stanie wstrzymanym.
+- `-Active` / `-Inactive` — start w stanie aktywnym / wstrzymanym.
 
 Przykład skrótu: `AA.exe -Mode Display -Inactive`.
 
