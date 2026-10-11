@@ -35,7 +35,9 @@ Jeden samodzielny plik `.exe`, bez instalacji i bez zależności poza .NET Frame
   GitHub Releases; nową wersję sam pobiera, weryfikuje (SHA-256), podmienia i uruchamia
   ponownie. W ustawieniach można wyłączyć instalację (wtedy tylko pyta) lub całe sprawdzanie.
 - **Jitter interwału** — opcjonalne losowe wahanie odstępu (±10%).
-- **Zapamiętywanie ustawień** — `%AppData%\AA\settings.ini`.
+- **Zapamiętywanie ustawień** — `%AppData%\AA\settings.ini`, a w **trybie przenośnym**
+  plik `settings.ini` obok `AA.exe` (np. na pendrivie). Tryb włącza się w ustawieniach
+  albo przez położenie pustego `settings.ini` obok programu.
 - **Autostart** — skrót w folderze Startup użytkownika (bez rejestru, bez admina).
 - **Pojedyncza instancja** — mutex pilnuje, by działała tylko jedna kopia (przy próbie
   uruchomienia drugiej pojawia się komunikat).
