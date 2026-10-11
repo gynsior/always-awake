@@ -16,9 +16,9 @@ using System.Windows.Forms;
 [assembly: AssemblyTitle("AA - Always Awake")]
 [assembly: AssemblyDescription("Utrzymuje komputer aktywnym (zapobiega wygaszeniu i blokadzie ekranu)")]
 [assembly: AssemblyProduct("AA - Always Awake")]
-[assembly: AssemblyCopyright("Copyright (c) 2026 Galeziok")]
-[assembly: AssemblyVersion("2.6.0.0")]
-[assembly: AssemblyFileVersion("2.6.0.0")]
+[assembly: AssemblyCopyright("Copyright (c) 2026 Piotr Gałęziok")]
+[assembly: AssemblyVersion("2.7.0.0")]
+[assembly: AssemblyFileVersion("2.7.0.0")]
 
 namespace AlwaysAwake
 {
@@ -72,9 +72,9 @@ namespace AlwaysAwake
     static class AppInfo
     {
         public const string Name = "AA - Always Awake";
-        public const string Version = "2.6";
-        public const string Author = "Galeziok";
-        public const string AuthorUrl = "https://github.com/gynsior";
+        public const string Version = "2.7";
+        public const string Author = "Piotr Gałęziok";
+        public const string WebsiteUrl = "https://galeziok.pl";
         public const string RepoUrl = "https://github.com/gynsior/always-awake";
         public const string ReleasesUrl = RepoUrl + "/releases/latest";
         public const string LatestApiUrl = "https://api.github.com/repos/gynsior/always-awake/releases/latest";
@@ -351,6 +351,7 @@ namespace AlwaysAwake
                                        "Hält den Computer wach - verhindert das Abschalten und Sperren des Bildschirms." } },
             { "AboutVersion",  new[] { "Wersja:", "Version:", "Version:" } },
             { "AboutAuthor",   new[] { "Autor:", "Author:", "Autor:" } },
+            { "AboutWebsite",  new[] { "Strona WWW:", "Website:", "Webseite:" } },
             { "AboutLicense",  new[] { "Licencja:", "License:", "Lizenz:" } },
             { "AboutLicenseText", new[] { "MIT (darmowy, open source)", "MIT (free, open source)", "MIT (kostenlos, Open Source)" } },
             { "AboutSource",   new[] { "Kod źródłowy:", "Source code:", "Quellcode:" } },
@@ -2323,7 +2324,8 @@ namespace AlwaysAwake
             y += 42;
 
             AddRow(L.S("AboutVersion"), AppInfo.Version, null, ref y);
-            AddRow(L.S("AboutAuthor"), AppInfo.Author + " (github.com/gynsior)", AppInfo.AuthorUrl, ref y);
+            AddRow(L.S("AboutAuthor"), AppInfo.Author, null, ref y);
+            AddRow(L.S("AboutWebsite"), "galeziok.pl", AppInfo.WebsiteUrl, ref y);
             AddRow(L.S("AboutLicense"), L.S("AboutLicenseText"), null, ref y);
             AddRow(L.S("AboutSource"), "github.com/gynsior/always-awake", AppInfo.RepoUrl, ref y);
             AddRow(L.S("AboutSettings"), Settings.FilePath() + (Settings.IsPortable() ? L.S("AboutPortable") : ""), null, ref y);
