@@ -8,6 +8,7 @@ Jeden samodzielny plik `.exe`, bez instalacji i bez zależności poza .NET Frame
 ## Funkcje
 
 - **Ikona w zasobniku** — zielona = aktywne, szara = wstrzymane. Dwuklik przełącza.
+  Podpowiedź po najechaniu pokazuje tryb i czas do auto-wyłączenia.
 - **Trzy tryby pracy:**
   - `Display` — oficjalne API `SetThreadExecutionState` (zapobiega wygaszeniu/uśpieniu).
   - `Input` — wysyła „cichy” klawisz **F15** (nie przesuwa kursora, nic nie wpisuje).
@@ -24,13 +25,17 @@ Jeden samodzielny plik `.exe`, bez instalacji i bez zależności poza .NET Frame
 
 Gotowy `AA.exe` jest dostępny w zakładce **Releases**.
 
+Plik nie jest podpisany cyfrowo, więc przy pierwszym uruchomieniu Windows SmartScreen
+może pokazać ostrzeżenie „System Windows ochronił ten komputer”. Kliknij
+**Więcej informacji → Uruchom mimo to**.
+
 ## Budowanie
 
 Wymagany tylko wbudowany w Windows kompilator C# (`csc.exe`, .NET Framework 4).
-W folderze z `AA.cs` uruchom w PowerShell:
+W folderze z `AA.cs` i `AA.ico` uruchom w PowerShell:
 
 ```powershell
-& "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /target:winexe /out:AA.exe /reference:System.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll AA.cs
+& "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /nologo /target:winexe /out:AA.exe /win32icon:AA.ico /reference:System.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll AA.cs
 ```
 
 ## Użycie
@@ -41,11 +46,18 @@ Uruchom `AA.exe` — pojawi się kropka w zasobniku.
   Jitter, Uruchamiaj przy starcie, Ustawienia / O programie, Zakończ.
 - **Dwuklik lewym** → szybkie włącz/wyłącz.
 
-Argumenty wiersza poleceń (opcjonalne, nadpisują zapisane ustawienia na starcie):
+Argumenty wiersza poleceń (opcjonalne, nadpisują zapisane ustawienia na starcie;
+wielkość liter bez znaczenia, działają też prefiksy `--` i `/`):
 
 ```
 AA.exe -Mode Display|Input|Both  -IntervalSeconds <n>  -Inactive
 ```
+
+- `-Mode` — tryb pracy,
+- `-IntervalSeconds` — co ile sekund odświeżać,
+- `-Inactive` — start w stanie wstrzymanym.
+
+Przykład skrótu: `AA.exe -Mode Display -Inactive`.
 
 ## Licencja
 

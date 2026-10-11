@@ -7,6 +7,13 @@ using System.Reflection;
 using System.Text;
 using System.Windows.Forms;
 
+[assembly: AssemblyTitle("AA - Always Awake")]
+[assembly: AssemblyDescription("Utrzymuje komputer aktywnym (zapobiega wygaszeniu i blokadzie ekranu)")]
+[assembly: AssemblyProduct("AA - Always Awake")]
+[assembly: AssemblyCopyright("Copyright (c) 2026 Galeziok")]
+[assembly: AssemblyVersion("2.1.0.0")]
+[assembly: AssemblyFileVersion("2.1.0.0")]
+
 namespace AlwaysAwake
 {
     static class Program
@@ -14,7 +21,7 @@ namespace AlwaysAwake
         static System.Threading.Mutex mutex;
 
         [STAThread]
-        static void Main()
+        static void Main(string[] args)
         {
             bool createdNew;
             // Nazwa z "Local\" => jedna instancja na sesje uzytkownika.
@@ -25,7 +32,7 @@ namespace AlwaysAwake
             {
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
-                Application.Run(new TrayContext());
+                Application.Run(new TrayContext(args));
             }
             finally
             {
@@ -127,6 +134,39 @@ namespace AlwaysAwake
         }
 
         public Settings Clone() { return (Settings)this.MemberwiseClone(); }
+
+        // Argumenty wiersza polecen nadpisuja ustawienia na starcie:
+        //   -Mode Display|Input|Both  -IntervalSeconds <n>  -Inactive
+        // Akceptowane prefiksy: -, --, /; wielkosc liter bez znaczenia.
+        // Zwraca true, gdy podano -Inactive (start wstrzymany, bez zmiany StartActive).
+        public bool ApplyArgs(string[] args)
+        {
+            bool inactive = false;
+            if (args == null) return inactive;
+            for (int i = 0; i < args.Length; i++)
+            {
+                string k = args[i].TrimStart('-', '/').ToLowerInvariant();
+                string v = (i + 1 < args.Length) ? args[i + 1] : null;
+                int n;
+                switch (k)
+                {
+                    case "mode":
+                        if (v == null) break;
+                        foreach (string m in new string[] { "Display", "Input", "Both" })
+                            if (string.Equals(v, m, StringComparison.OrdinalIgnoreCase)) Mode = m;
+                        i++;
+                        break;
+                    case "intervalseconds":
+                        if (v != null && int.TryParse(v, out n) && n > 0) IntervalSeconds = n;
+                        i++;
+                        break;
+                    case "inactive":
+                        inactive = true;
+                        break;
+                }
+            }
+            return inactive;
+        }
     }
 
     // ---------------------------------------------------------------
@@ -187,7 +227,7 @@ namespace AlwaysAwake
     // ---------------------------------------------------------------
     public class TrayContext : ApplicationContext
     {
-        public const string AppVersion = "2.0";
+        public const string AppVersion = "2.1";
 
         [DllImport("kernel32.dll", SetLastError = true)]
         static extern uint SetThreadExecutionState(uint esFlags);
@@ -220,10 +260,11 @@ namespace AlwaysAwake
         int[] autoOffValues = new int[] { 0, 30, 60, 120, 240 };
         string[] autoOffLabels = new string[] { "Nigdy", "30 min", "1 godz", "2 godz", "4 godz" };
 
-        public TrayContext()
+        public TrayContext(string[] args)
         {
             settings = Settings.Load();
-            active = settings.StartActive;
+            bool argInactive = settings.ApplyArgs(args);
+            active = settings.StartActive && !argInactive;
 
             iconActive   = MakeDot(Color.FromArgb(40, 180, 70));
             iconInactive = MakeDot(Color.FromArgb(150, 150, 150));
@@ -263,6 +304,7 @@ namespace AlwaysAwake
                 {
                     settings.Mode = (string)((ToolStripMenuItem)s).Tag;
                     settings.Save();
+                    ClearKeepAwake(); // np. Both -> Input: zdejmij flagi ekranu
                     UpdateUi();
                     DoKeepAwake(true);
                 };
@@ -365,6 +407,7 @@ namespace AlwaysAwake
             }
             DoKeepAwake(false);
             timer.Interval = JitterMs();
+            UpdateTooltip();
         }
 
         void DoKeepAwake(bool immediate)
@@ -398,16 +441,8 @@ namespace AlwaysAwake
 
         void UpdateUi()
         {
-            if (active)
-            {
-                notify.Icon = iconActive;
-                notify.Text = "AA - aktywne (" + settings.Mode + ")";
-            }
-            else
-            {
-                notify.Icon = iconInactive;
-                notify.Text = "AA - wstrzymane (" + settings.Mode + ")";
-            }
+            notify.Icon = active ? iconActive : iconInactive;
+            UpdateTooltip();
             miToggle.Checked = active;
             miIdle.Checked = settings.IdleAware;
             miJitter.Checked = settings.Jitter;
@@ -417,6 +452,28 @@ namespace AlwaysAwake
                 it.Checked = ((string)it.Tag == settings.Mode);
             foreach (ToolStripMenuItem it in miAutoOffMenu.DropDownItems)
                 it.Checked = ((int)it.Tag == settings.AutoOffMinutes);
+        }
+
+        // NotifyIcon.Text ma limit 63 znakow (.NET Framework rzuca wyjatek powyzej).
+        void UpdateTooltip()
+        {
+            string text;
+            if (active)
+            {
+                text = "AA - aktywne (" + settings.Mode + ")";
+                if (settings.AutoOffMinutes > 0)
+                {
+                    TimeSpan left = activationTime.AddMinutes(settings.AutoOffMinutes) - DateTime.Now;
+                    int mins = (int)Math.Ceiling(Math.Max(0, left.TotalMinutes));
+                    text += string.Format(", wylaczy sie za {0}:{1:00}", mins / 60, mins % 60);
+                }
+            }
+            else
+            {
+                text = "AA - wstrzymane (" + settings.Mode + ")";
+            }
+            if (text.Length > 63) text = text.Substring(0, 63);
+            notify.Text = text;
         }
 
         void OpenSettings()
@@ -430,6 +487,7 @@ namespace AlwaysAwake
                     AutoStart.Set(f.AutoStartEnabled);
                     ApplyTimerBase();
                     if (active) activationTime = DateTime.Now;
+                    ClearKeepAwake();
                     UpdateUi();
                     DoKeepAwake(true);
                 }
@@ -486,6 +544,7 @@ namespace AlwaysAwake
             AutoStartEnabled = autoStart;
 
             Text = "AA - Always Awake";
+            try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
             FormBorderStyle = FormBorderStyle.FixedDialog;
             StartPosition = FormStartPosition.CenterScreen;
             MaximizeBox = false; MinimizeBox = false;
