@@ -5,17 +5,19 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Globalization;
 using System.IO;
+using System.Net;
 using System.Runtime.InteropServices;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Windows.Forms;
 
 [assembly: AssemblyTitle("AA - Always Awake")]
 [assembly: AssemblyDescription("Utrzymuje komputer aktywnym (zapobiega wygaszeniu i blokadzie ekranu)")]
 [assembly: AssemblyProduct("AA - Always Awake")]
 [assembly: AssemblyCopyright("Copyright (c) 2026 Galeziok")]
-[assembly: AssemblyVersion("2.2.0.0")]
-[assembly: AssemblyFileVersion("2.2.0.0")]
+[assembly: AssemblyVersion("2.3.0.0")]
+[assembly: AssemblyFileVersion("2.3.0.0")]
 
 namespace AlwaysAwake
 {
@@ -60,10 +62,37 @@ namespace AlwaysAwake
     static class AppInfo
     {
         public const string Name = "AA - Always Awake";
-        public const string Version = "2.2";
+        public const string Version = "2.3";
         public const string Author = "Galeziok";
         public const string AuthorUrl = "https://github.com/gynsior";
         public const string RepoUrl = "https://github.com/gynsior/always-awake";
+        public const string ReleasesUrl = RepoUrl + "/releases/latest";
+        public const string LatestApiUrl = "https://api.github.com/repos/gynsior/always-awake/releases/latest";
+
+        public static void OpenUrl(string url)
+        {
+            try { Process.Start(url); } catch { }
+        }
+    }
+
+    // ---------------------------------------------------------------
+    // Sprawdzanie aktualizacji (GitHub Releases)
+    // ---------------------------------------------------------------
+    static class Updates
+    {
+        // Wyciaga wersje z odpowiedzi API, np. "tag_name": "v2.3" -> "2.3".
+        public static string ParseTag(string json)
+        {
+            if (json == null) return null;
+            Match m = Regex.Match(json, "\"tag_name\"\\s*:\\s*\"v?([0-9][^\"]*)\"");
+            return m.Success ? m.Groups[1].Value : null;
+        }
+
+        public static bool IsNewer(string remote, string local)
+        {
+            try { return new Version(remote) > new Version(local); }
+            catch { return false; }
+        }
     }
 
     // ---------------------------------------------------------------
@@ -101,11 +130,13 @@ namespace AlwaysAwake
             }
         }
 
+        // 0 -> "Nigdy", 45 -> "45 min", 120 -> "2 godz.", 90 -> "1 godz. 30 min"
         public static string AutoOffLabel(int minutes)
         {
             if (minutes == 0) return S("Never");
             if (minutes < 60) return minutes + " min";
-            return string.Format(S("HoursFmt"), minutes / 60);
+            string hours = string.Format(S("HoursFmt"), minutes / 60);
+            return minutes % 60 == 0 ? hours : hours + " " + (minutes % 60) + " min";
         }
 
         static readonly Dictionary<string, string[]> T = new Dictionary<string, string[]>
@@ -116,12 +147,16 @@ namespace AlwaysAwake
             { "MenuAutoOff",   new[] { "Auto-wyłącz po", "Auto-off after", "Automatisch aus nach" } },
             { "Never",         new[] { "Nigdy", "Never", "Nie" } },
             { "HoursFmt",      new[] { "{0} godz.", "{0} h", "{0} Std." } },
+            { "MenuAutoOffCustom", new[] { "Własny czas / godzina...", "Custom time / until...", "Eigene Zeit / Uhrzeit..." } },
+            { "AutoOffUntil",  new[] { "Do {0}", "Until {0}", "Bis {0}" } },
+            { "AutoOffCustom", new[] { "Własny: {0}", "Custom: {0}", "Eigene: {0}" } },
             { "MenuIdle",      new[] { "Tryb bezczynności", "Idle-aware mode", "Leerlaufmodus" } },
             { "MenuJitter",    new[] { "Jitter interwału", "Interval jitter", "Intervall-Jitter" } },
             { "MenuAutoStart", new[] { "Uruchamiaj przy starcie", "Run at startup", "Mit Windows starten" } },
             { "MenuLanguage",  new[] { "Język (Language)", "Language", "Sprache (Language)" } },
             { "LangAuto",      new[] { "Automatycznie (system)", "Automatic (system)", "Automatisch (System)" } },
             { "MenuSettings",  new[] { "Ustawienia...", "Settings...", "Einstellungen..." } },
+            { "MenuUpdates",   new[] { "Sprawdź aktualizacje", "Check for updates", "Nach Updates suchen" } },
             { "MenuAbout",     new[] { "O programie...", "About...", "Über AA..." } },
             { "MenuExit",      new[] { "Zakończ", "Exit", "Beenden" } },
             { "AutoStartFail", new[] { "Nie udało się zmienić autostartu.",
@@ -132,6 +167,31 @@ namespace AlwaysAwake
             { "TipActive",     new[] { "AA - aktywne ({0})", "AA - active ({0})", "AA - aktiv ({0})" } },
             { "TipPaused",     new[] { "AA - wstrzymane ({0})", "AA - paused ({0})", "AA - pausiert ({0})" } },
             { "TipOffIn",      new[] { ", wyłączy się za {0}", ", off in {0}", ", aus in {0}" } },
+            { "TipUntil",      new[] { ", do {0}", ", until {0}", ", bis {0}" } },
+
+            // --- dymki ---
+            { "BalloonOn",     new[] { "AA aktywne", "AA active", "AA aktiv" } },
+            { "BalloonOff",    new[] { "AA wstrzymane", "AA paused", "AA pausiert" } },
+            { "BalloonAutoOff", new[] { "Minął czas auto-wyłączenia - AA wstrzymane.",
+                                        "Auto-off time reached - AA paused.",
+                                        "Abschaltzeit erreicht - AA pausiert." } },
+            { "HotkeyBusy",    new[] { "Skrót {0} jest zajęty przez inny program. Zmień go w ustawieniach.",
+                                       "The shortcut {0} is already used by another program. Change it in Settings.",
+                                       "Die Tastenkombination {0} wird bereits von einem anderen Programm verwendet. Ändern Sie sie in den Einstellungen." } },
+
+            // --- aktualizacje ---
+            { "UpdateBalloon", new[] { "Dostępna nowa wersja {0}. Kliknij, aby otworzyć stronę pobierania.",
+                                       "Version {0} is available. Click to open the download page.",
+                                       "Version {0} ist verfügbar. Klicken Sie, um die Download-Seite zu öffnen." } },
+            { "UpdateAsk",     new[] { "Dostępna jest nowa wersja {0} (masz {1}).\n\nOtworzyć stronę pobierania?",
+                                       "A new version {0} is available (you have {1}).\n\nOpen the download page?",
+                                       "Eine neue Version {0} ist verfügbar (installiert: {1}).\n\nDownload-Seite öffnen?" } },
+            { "UpdateNone",    new[] { "Masz najnowszą wersję ({0}).",
+                                       "You have the latest version ({0}).",
+                                       "Sie haben die neueste Version ({0})." } },
+            { "UpdateError",   new[] { "Nie udało się sprawdzić aktualizacji. Sprawdź połączenie z internetem.",
+                                       "Could not check for updates. Check your internet connection.",
+                                       "Updates konnten nicht geprüft werden. Bitte Internetverbindung prüfen." } },
 
             // --- druga kopia programu ---
             { "AlreadyRunning", new[] {
@@ -160,9 +220,26 @@ namespace AlwaysAwake
             { "LblAutoOff",    new[] { "Auto-wyłącz po:", "Auto-off after:", "Automatisch aus nach:" } },
             { "ChkStartActive", new[] { "Startuj jako aktywne", "Start as active", "Aktiv starten" } },
             { "ChkAutoStart",  new[] { "Uruchamiaj przy starcie systemu", "Run at Windows startup", "Mit Windows starten" } },
+            { "ChkUpdates",    new[] { "Sprawdzaj aktualizacje automatycznie", "Check for updates automatically", "Automatisch nach Updates suchen" } },
             { "LblLanguage",   new[] { "Język:", "Language:", "Sprache:" } },
+            { "ChkHotkey",     new[] { "Skrót klawiszowy:", "Keyboard shortcut:", "Tastenkombination:" } },
+            { "HotkeyNone",    new[] { "(brak)", "(none)", "(keine)" } },
+            { "HotkeyHint",    new[] { "Kliknij w pole i naciśnij kombinację (Ctrl/Alt + klawisz). Włącza/wyłącza AA.",
+                                       "Click the box and press a combination (Ctrl/Alt + key). Toggles AA on/off.",
+                                       "Ins Feld klicken und Kombination drücken (Strg/Alt + Taste). Schaltet AA ein/aus." } },
+            { "HotkeyAltGr",   new[] { "Uwaga: {0} działa jak AltGr+{1} - zablokuje pisanie znaku z tym klawiszem (np. ą, ę).",
+                                       "Note: {0} acts like AltGr+{1} on some keyboards and will block typing that character.",
+                                       "Achtung: {0} entspricht AltGr+{1} und blockiert die Eingabe dieses Zeichens (z. B. @, €)." } },
             { "Ok",            new[] { "OK", "OK", "OK" } },
             { "Cancel",        new[] { "Anuluj", "Cancel", "Abbrechen" } },
+
+            // --- okno wlasnego czasu auto-wylaczenia ---
+            { "AutoOffTitle",  new[] { "AA - Auto-wyłączenie", "AA - Auto-off", "AA - Automatisch aus" } },
+            { "RbAfter",       new[] { "Wyłącz po (min):", "Turn off after (min):", "Ausschalten nach (Min.):" } },
+            { "RbAt",          new[] { "Wyłącz o godzinie:", "Turn off at:", "Ausschalten um:" } },
+            { "AtHint",        new[] { "Jeśli ta godzina już minęła, AA wyłączy się jutro.",
+                                       "If that time has already passed today, AA turns off tomorrow.",
+                                       "Ist die Uhrzeit heute schon vorbei, schaltet AA morgen aus." } },
 
             // --- okno o programie ---
             { "AboutTitle",    new[] { "O programie", "About", "Über" } },
@@ -180,6 +257,137 @@ namespace AlwaysAwake
     }
 
     // ---------------------------------------------------------------
+    // Skrot klawiszowy zapisywany jako tekst, np. "Ctrl+Alt+K".
+    // ---------------------------------------------------------------
+    static class HotkeyText
+    {
+        // Klawisze, ktore z Ctrl+Alt (= AltGr) daja znak w ukladzie polskim/niemieckim.
+        static readonly Keys[] AltGrKeys = {
+            Keys.A, Keys.C, Keys.E, Keys.L, Keys.N, Keys.O, Keys.S, Keys.X, Keys.Z, Keys.Q, Keys.M,
+            Keys.D2, Keys.D3, Keys.D7, Keys.D8, Keys.D9, Keys.D0 };
+
+        public static bool IsValid(Keys mods, Keys key)
+        {
+            if (key == Keys.None || IsModifierKey(key)) return false;
+            return (mods & (Keys.Control | Keys.Alt)) != 0;
+        }
+
+        public static bool IsModifierKey(Keys key)
+        {
+            return key == Keys.ControlKey || key == Keys.ShiftKey || key == Keys.Menu ||
+                   key == Keys.LControlKey || key == Keys.RControlKey ||
+                   key == Keys.LShiftKey || key == Keys.RShiftKey ||
+                   key == Keys.LMenu || key == Keys.RMenu || key == Keys.LWin || key == Keys.RWin;
+        }
+
+        public static bool ConflictsWithAltGr(Keys mods, Keys key)
+        {
+            bool ctrlAlt = (mods & Keys.Control) != 0 && (mods & Keys.Alt) != 0;
+            return ctrlAlt && Array.IndexOf(AltGrKeys, key) >= 0;
+        }
+
+        public static string KeyName(Keys key)
+        {
+            if (key >= Keys.D0 && key <= Keys.D9) return ((int)(key - Keys.D0)).ToString();
+            return key.ToString();
+        }
+
+        public static string Format(Keys mods, Keys key)
+        {
+            if (key == Keys.None) return "";
+            StringBuilder sb = new StringBuilder();
+            if ((mods & Keys.Control) != 0) sb.Append("Ctrl+");
+            if ((mods & Keys.Alt) != 0) sb.Append("Alt+");
+            if ((mods & Keys.Shift) != 0) sb.Append("Shift+");
+            sb.Append(KeyName(key));
+            return sb.ToString();
+        }
+
+        public static bool TryParse(string text, out Keys mods, out Keys key)
+        {
+            mods = Keys.None; key = Keys.None;
+            if (string.IsNullOrEmpty(text)) return false;
+            string[] parts = text.Split('+');
+            for (int i = 0; i < parts.Length; i++)
+            {
+                string p = parts[i].Trim();
+                if (i < parts.Length - 1)
+                {
+                    switch (p.ToLowerInvariant())
+                    {
+                        case "ctrl": mods |= Keys.Control; break;
+                        case "alt": mods |= Keys.Alt; break;
+                        case "shift": mods |= Keys.Shift; break;
+                        default: return false;
+                    }
+                }
+                else if (p.Length == 1 && char.IsDigit(p[0]))
+                {
+                    key = Keys.D0 + (p[0] - '0');
+                }
+                else
+                {
+                    try { key = (Keys)Enum.Parse(typeof(Keys), p, true); }
+                    catch { return false; }
+                }
+            }
+            return IsValid(mods, key);
+        }
+    }
+
+    // Niewidoczne okno (message-only) odbierajace globalny skrot klawiszowy.
+    class HotkeyWindow : NativeWindow, IDisposable
+    {
+        [DllImport("user32.dll", SetLastError = true)]
+        static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
+        [DllImport("user32.dll", SetLastError = true)]
+        static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+
+        const int WM_HOTKEY = 0x0312;
+        const int HotkeyId = 1;
+        const uint MOD_ALT = 0x1, MOD_CONTROL = 0x2, MOD_SHIFT = 0x4, MOD_NOREPEAT = 0x4000;
+
+        bool registered;
+        public event EventHandler Pressed;
+
+        public HotkeyWindow()
+        {
+            CreateParams cp = new CreateParams();
+            cp.Parent = new IntPtr(-3); // HWND_MESSAGE
+            CreateHandle(cp);
+        }
+
+        public bool Register(Keys mods, Keys key)
+        {
+            Unregister();
+            uint m = MOD_NOREPEAT;
+            if ((mods & Keys.Control) != 0) m |= MOD_CONTROL;
+            if ((mods & Keys.Alt) != 0) m |= MOD_ALT;
+            if ((mods & Keys.Shift) != 0) m |= MOD_SHIFT;
+            registered = RegisterHotKey(Handle, HotkeyId, m, (uint)key);
+            return registered;
+        }
+
+        public void Unregister()
+        {
+            if (registered) { UnregisterHotKey(Handle, HotkeyId); registered = false; }
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            if (m.Msg == WM_HOTKEY && m.WParam.ToInt32() == HotkeyId && Pressed != null)
+                Pressed(this, EventArgs.Empty);
+            base.WndProc(ref m);
+        }
+
+        public void Dispose()
+        {
+            Unregister();
+            DestroyHandle();
+        }
+    }
+
+    // ---------------------------------------------------------------
     // Ustawienia zapisywane do %AppData%\AA\settings.ini
     // ---------------------------------------------------------------
     public class Settings
@@ -192,6 +400,9 @@ namespace AlwaysAwake
         public bool Jitter = false;
         public int AutoOffMinutes = 0;         // 0 = nigdy
         public string Language = "Auto";       // Auto | pl | en | de
+        public bool CheckUpdates = true;
+        public bool HotkeyEnabled = true;
+        public string Hotkey = "Ctrl+Alt+K";
 
         static string Dir()
         {
@@ -226,6 +437,7 @@ namespace AlwaysAwake
                         string k = t.Substring(0, eq).Trim();
                         string v = t.Substring(eq + 1).Trim();
                         int n;
+                        Keys hm, hk;
                         switch (k)
                         {
                             case "Mode":
@@ -245,6 +457,11 @@ namespace AlwaysAwake
                                 break;
                             case "Language":
                                 if (Array.IndexOf(L.Codes, v) >= 0) s.Language = v;
+                                break;
+                            case "CheckUpdates": s.CheckUpdates = ParseBool(v, s.CheckUpdates); break;
+                            case "HotkeyEnabled": s.HotkeyEnabled = ParseBool(v, s.HotkeyEnabled); break;
+                            case "Hotkey":
+                                if (HotkeyText.TryParse(v, out hm, out hk)) s.Hotkey = HotkeyText.Format(hm, hk);
                                 break;
                         }
                     }
@@ -270,6 +487,9 @@ namespace AlwaysAwake
                 sb.AppendLine("Jitter=" + Jitter);
                 sb.AppendLine("AutoOffMinutes=" + AutoOffMinutes);
                 sb.AppendLine("Language=" + Language);
+                sb.AppendLine("CheckUpdates=" + CheckUpdates);
+                sb.AppendLine("HotkeyEnabled=" + HotkeyEnabled);
+                sb.AppendLine("Hotkey=" + Hotkey);
                 File.WriteAllText(FilePath(), sb.ToString());
             }
             catch { }
@@ -389,20 +609,29 @@ namespace AlwaysAwake
 
         Settings settings;
         NotifyIcon notify;
-        Timer timer;
+        Timer timer;       // interwal podtrzymywania (IntervalSeconds)
+        Timer clockTimer;  // co 15 s: auto-wylaczenie, podpowiedz, aktualizacje
+        HotkeyWindow hotkey;
         Random rng = new Random();
 
         bool active;
         DateTime activationTime;
+        DateTime? untilTime;       // "wylacz o godzinie" - tylko do konca sesji, nie zapisywane
+
+        DateTime nextUpdateCheck;
+        bool updateCheckRunning;
+        string notifiedVersion;    // zeby nie pokazywac dymka o tej samej wersji wiele razy
+        string balloonUrl;         // link otwierany po kliknieciu w dymek (null = brak)
 
         Icon iconActive, iconInactive;
-        ToolStripMenuItem miToggle, miModeMenu, miAutoOffMenu, miAutoStart, miIdle, miJitter;
-        ToolStripMenuItem miLanguageMenu, miSettings, miAbout, miExit;
+        ToolStripMenuItem miToggle, miModeMenu, miAutoOffMenu, miAutoOffCustom, miAutoStart, miIdle, miJitter;
+        ToolStripMenuItem miLanguageMenu, miSettings, miUpdates, miAbout, miExit;
         int[] autoOffValues = new int[] { 0, 30, 60, 120, 240 };
 
         // otwarte okna (zeby nie otwierac drugiej kopii tego samego okna)
         SettingsForm settingsForm;
         AboutForm aboutForm;
+        AutoOffForm autoOffForm;
 
         public TrayContext(Settings loaded, string[] args)
         {
@@ -419,14 +648,29 @@ namespace AlwaysAwake
             notify.ContextMenuStrip = BuildContextMenu();
             notify.Visible = true;
             notify.DoubleClick += delegate { SetActive(!active); };
+            notify.BalloonTipClicked += delegate { if (balloonUrl != null) AppInfo.OpenUrl(balloonUrl); };
 
             timer = new Timer();
             timer.Tick += delegate { OnTick(); };
             ApplyTimerBase();
             timer.Start();
 
+            clockTimer = new Timer();
+            clockTimer.Interval = 15000;
+            clockTimer.Tick += delegate { OnClock(); };
+            clockTimer.Start();
+            nextUpdateCheck = DateTime.Now.AddSeconds(30);
+
+            hotkey = new HotkeyWindow();
+            hotkey.Pressed += delegate
+            {
+                SetActive(!active);
+                ShowBalloon(active ? L.S("BalloonOn") : L.S("BalloonOff"), ToolTipIcon.None, null, 1500);
+            };
+
             if (active) { activationTime = DateTime.Now; }
             ApplyTexts();
+            ApplyHotkey(true);
             UpdateUi();
             DoKeepAwake(true);
         }
@@ -463,13 +707,14 @@ namespace AlwaysAwake
                 item.Tag = autoOffValues[i];
                 item.Click += delegate(object s, EventArgs e)
                 {
-                    settings.AutoOffMinutes = (int)((ToolStripMenuItem)s).Tag;
-                    settings.Save();
-                    if (active) activationTime = DateTime.Now;
-                    UpdateUi();
+                    SetAutoOffMinutes((int)((ToolStripMenuItem)s).Tag);
                 };
                 miAutoOffMenu.DropDownItems.Add(item);
             }
+            miAutoOffMenu.DropDownItems.Add(new ToolStripSeparator());
+            miAutoOffCustom = new ToolStripMenuItem();
+            miAutoOffCustom.Click += delegate { OpenAutoOff(); };
+            miAutoOffMenu.DropDownItems.Add(miAutoOffCustom);
 
             miIdle = new ToolStripMenuItem();
             miIdle.CheckOnClick = true;
@@ -485,8 +730,7 @@ namespace AlwaysAwake
             {
                 bool ok = AutoStart.Set(miAutoStart.Checked);
                 miAutoStart.Checked = AutoStart.IsEnabled();
-                if (!ok && notify != null)
-                    notify.ShowBalloonTip(4000, "AA", L.S("AutoStartFail"), ToolTipIcon.Warning);
+                if (!ok) ShowBalloon(L.S("AutoStartFail"), ToolTipIcon.Warning, null, 4000);
             };
 
             miLanguageMenu = new ToolStripMenuItem();
@@ -503,6 +747,9 @@ namespace AlwaysAwake
 
             miSettings = new ToolStripMenuItem();
             miSettings.Click += delegate { OpenSettings(); };
+
+            miUpdates = new ToolStripMenuItem();
+            miUpdates.Click += delegate { CheckForUpdates(true); };
 
             miAbout = new ToolStripMenuItem();
             miAbout.Click += delegate { OpenAbout(); };
@@ -524,6 +771,7 @@ namespace AlwaysAwake
             menu.Items.Add(miLanguageMenu);
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(miSettings);
+            menu.Items.Add(miUpdates);
             menu.Items.Add(miAbout);
             menu.Items.Add(miExit);
             return menu;
@@ -535,8 +783,8 @@ namespace AlwaysAwake
             miToggle.Text = L.S("MenuActive");
             miModeMenu.Text = L.S("MenuMode");
             miAutoOffMenu.Text = L.S("MenuAutoOff");
-            foreach (ToolStripMenuItem it in miAutoOffMenu.DropDownItems)
-                it.Text = L.AutoOffLabel((int)it.Tag);
+            foreach (ToolStripItem it in miAutoOffMenu.DropDownItems)
+                if (it.Tag is int) it.Text = L.AutoOffLabel((int)it.Tag);
             miIdle.Text = L.S("MenuIdle");
             miJitter.Text = L.S("MenuJitter");
             miAutoStart.Text = L.S("MenuAutoStart");
@@ -544,6 +792,7 @@ namespace AlwaysAwake
             foreach (ToolStripMenuItem it in miLanguageMenu.DropDownItems)
                 it.Text = L.LanguageName((string)it.Tag);
             miSettings.Text = L.S("MenuSettings");
+            miUpdates.Text = L.S("MenuUpdates");
             miAbout.Text = L.S("MenuAbout");
             miExit.Text = L.S("MenuExit");
         }
@@ -555,6 +804,123 @@ namespace AlwaysAwake
             L.Init(code);
             ApplyTexts();
             UpdateUi();
+        }
+
+        void ShowBalloon(string text, ToolTipIcon icon, string url, int ms)
+        {
+            balloonUrl = url;
+            notify.ShowBalloonTip(ms, "AA", text, icon);
+        }
+
+        // ---- skrot klawiszowy ----
+        void ApplyHotkey(bool reportFailure)
+        {
+            hotkey.Unregister();
+            miToggle.ShortcutKeyDisplayString = "";
+            Keys mods, key;
+            if (!settings.HotkeyEnabled || !HotkeyText.TryParse(settings.Hotkey, out mods, out key)) return;
+            if (hotkey.Register(mods, key))
+                miToggle.ShortcutKeyDisplayString = settings.Hotkey;
+            else if (reportFailure)
+                ShowBalloon(string.Format(L.S("HotkeyBusy"), settings.Hotkey), ToolTipIcon.Warning, null, 5000);
+        }
+
+        // ---- auto-wylaczenie ----
+        DateTime? OffDeadline()
+        {
+            if (untilTime.HasValue) return untilTime.Value;
+            if (settings.AutoOffMinutes > 0) return activationTime.AddMinutes(settings.AutoOffMinutes);
+            return null;
+        }
+
+        void SetAutoOffMinutes(int minutes)
+        {
+            untilTime = null;
+            settings.AutoOffMinutes = minutes;
+            settings.Save();
+            if (active) activationTime = DateTime.Now;
+            UpdateUi();
+        }
+
+        void OpenAutoOff()
+        {
+            if (autoOffForm != null) { autoOffForm.Activate(); return; }
+            using (autoOffForm = new AutoOffForm(settings.AutoOffMinutes, untilTime))
+            {
+                if (autoOffForm.ShowDialog() == DialogResult.OK)
+                {
+                    DateTime? until = autoOffForm.UntilTime;
+                    if (until.HasValue)
+                    {
+                        // "do godziny" zaklada, ze AA ma dzialac do tego czasu
+                        if (!active) SetActive(true);
+                        untilTime = until;
+                        UpdateUi();
+                    }
+                    else
+                    {
+                        SetAutoOffMinutes(autoOffForm.Minutes);
+                    }
+                }
+            }
+            autoOffForm = null;
+        }
+
+        // ---- aktualizacje ----
+        void CheckForUpdates(bool manual)
+        {
+            if (updateCheckRunning) return;
+            updateCheckRunning = true;
+            try
+            {
+                ServicePointManager.SecurityProtocol |= (SecurityProtocolType)3072; // TLS 1.2
+                WebClient wc = new WebClient();
+                wc.Encoding = Encoding.UTF8;
+                wc.Headers[HttpRequestHeader.UserAgent] = "AA-AlwaysAwake/" + AppInfo.Version;
+                wc.Headers[HttpRequestHeader.Accept] = "application/vnd.github+json";
+                wc.DownloadStringCompleted += delegate(object s, DownloadStringCompletedEventArgs e)
+                {
+                    updateCheckRunning = false;
+                    string tag = (e.Error == null && !e.Cancelled) ? Updates.ParseTag(e.Result) : null;
+                    wc.Dispose();
+                    OnUpdateResult(tag, manual);
+                };
+                wc.DownloadStringAsync(new Uri(AppInfo.LatestApiUrl));
+            }
+            catch
+            {
+                updateCheckRunning = false;
+                OnUpdateResult(null, manual);
+            }
+        }
+
+        void OnUpdateResult(string latest, bool manual)
+        {
+            if (latest == null)
+            {
+                if (manual)
+                    MessageBox.Show(L.S("UpdateError"), AppInfo.Name, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            if (Updates.IsNewer(latest, AppInfo.Version))
+            {
+                if (manual)
+                {
+                    if (MessageBox.Show(string.Format(L.S("UpdateAsk"), latest, AppInfo.Version), AppInfo.Name,
+                            MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
+                        AppInfo.OpenUrl(AppInfo.ReleasesUrl);
+                }
+                else if (notifiedVersion != latest)
+                {
+                    notifiedVersion = latest;
+                    ShowBalloon(string.Format(L.S("UpdateBalloon"), latest), ToolTipIcon.Info, AppInfo.ReleasesUrl, 10000);
+                }
+            }
+            else if (manual)
+            {
+                MessageBox.Show(string.Format(L.S("UpdateNone"), AppInfo.Version), AppInfo.Name,
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
         }
 
         // ---- logika ----
@@ -588,15 +954,27 @@ namespace AlwaysAwake
         void OnTick()
         {
             if (!active) return;
-            if (settings.AutoOffMinutes > 0 &&
-                (DateTime.Now - activationTime).TotalMinutes >= settings.AutoOffMinutes)
-            {
-                SetActive(false);
-                return;
-            }
             DoKeepAwake(false);
             timer.Interval = JitterMs();
-            UpdateTooltip();
+        }
+
+        void OnClock()
+        {
+            if (active)
+            {
+                DateTime? deadline = OffDeadline();
+                if (deadline.HasValue && DateTime.Now >= deadline.Value)
+                {
+                    SetActive(false);
+                    ShowBalloon(L.S("BalloonAutoOff"), ToolTipIcon.Info, null, 5000);
+                }
+                else UpdateTooltip();
+            }
+            if (settings.CheckUpdates && DateTime.Now >= nextUpdateCheck)
+            {
+                nextUpdateCheck = DateTime.Now.AddHours(24);
+                CheckForUpdates(false);
+            }
         }
 
         void DoKeepAwake(bool immediate)
@@ -623,8 +1001,17 @@ namespace AlwaysAwake
         void SetActive(bool on)
         {
             active = on;
-            if (on) { activationTime = DateTime.Now; DoKeepAwake(true); }
-            else { ClearKeepAwake(); }
+            if (on)
+            {
+                activationTime = DateTime.Now;
+                if (untilTime.HasValue && untilTime.Value <= activationTime) untilTime = null;
+                DoKeepAwake(true);
+            }
+            else
+            {
+                untilTime = null; // "do godziny" dotyczy tylko biezacej aktywacji
+                ClearKeepAwake();
+            }
             UpdateUi();
         }
 
@@ -639,8 +1026,23 @@ namespace AlwaysAwake
 
             foreach (ToolStripMenuItem it in miModeMenu.DropDownItems)
                 it.Checked = ((string)it.Tag == settings.Mode);
-            foreach (ToolStripMenuItem it in miAutoOffMenu.DropDownItems)
-                it.Checked = ((int)it.Tag == settings.AutoOffMinutes);
+
+            bool preset = false;
+            foreach (ToolStripItem it in miAutoOffMenu.DropDownItems)
+            {
+                ToolStripMenuItem mi = it as ToolStripMenuItem;
+                if (mi == null || !(mi.Tag is int)) continue;
+                mi.Checked = !untilTime.HasValue && (int)mi.Tag == settings.AutoOffMinutes;
+                if (mi.Checked) preset = true;
+            }
+            miAutoOffCustom.Checked = !preset;
+            if (untilTime.HasValue)
+                miAutoOffCustom.Text = string.Format(L.S("AutoOffUntil"), untilTime.Value.ToString("HH:mm"));
+            else if (!preset)
+                miAutoOffCustom.Text = string.Format(L.S("AutoOffCustom"), L.AutoOffLabel(settings.AutoOffMinutes));
+            else
+                miAutoOffCustom.Text = L.S("MenuAutoOffCustom");
+
             foreach (ToolStripMenuItem it in miLanguageMenu.DropDownItems)
                 it.Checked = ((string)it.Tag == settings.Language);
         }
@@ -652,7 +1054,11 @@ namespace AlwaysAwake
             if (active)
             {
                 text = string.Format(L.S("TipActive"), settings.Mode);
-                if (settings.AutoOffMinutes > 0)
+                if (untilTime.HasValue)
+                {
+                    text += string.Format(L.S("TipUntil"), untilTime.Value.ToString("HH:mm"));
+                }
+                else if (settings.AutoOffMinutes > 0)
                 {
                     TimeSpan left = activationTime.AddMinutes(settings.AutoOffMinutes) - DateTime.Now;
                     int mins = (int)Math.Ceiling(Math.Max(0, left.TotalMinutes));
@@ -671,6 +1077,8 @@ namespace AlwaysAwake
         void OpenSettings()
         {
             if (settingsForm != null) { settingsForm.Activate(); return; }
+            // skrot nieaktywny podczas edycji - inaczej nie da sie go wpisac w pole
+            hotkey.Unregister();
             using (settingsForm = new SettingsForm(settings.Clone(), AutoStart.IsEnabled()))
             {
                 if (settingsForm.ShowDialog() == DialogResult.OK)
@@ -688,6 +1096,7 @@ namespace AlwaysAwake
                 }
             }
             settingsForm = null;
+            ApplyHotkey(true);
         }
 
         void OpenAbout()
@@ -703,6 +1112,8 @@ namespace AlwaysAwake
             active = false;
             ClearKeepAwake();
             timer.Stop();
+            clockTimer.Stop();
+            hotkey.Dispose();
             notify.Visible = false;
             notify.Dispose();
             ExitThread();
@@ -730,6 +1141,68 @@ namespace AlwaysAwake
     }
 
     // ---------------------------------------------------------------
+    // Pole do wpisania skrotu: kliknij i nacisnij kombinacje klawiszy.
+    // Backspace/Delete czysci pole.
+    // ---------------------------------------------------------------
+    public class HotkeyBox : TextBox
+    {
+        public Keys Mods = Keys.None;
+        public Keys Key = Keys.None;
+        public event EventHandler HotkeyChanged;
+
+        public HotkeyBox()
+        {
+            ReadOnly = true;
+            BackColor = SystemColors.Window;
+            ShortcutsEnabled = false;
+        }
+
+        public string Value { get { return HotkeyText.Format(Mods, Key); } }
+
+        public void SetHotkey(Keys mods, Keys key)
+        {
+            Mods = mods; Key = key;
+            Text = key == Keys.None ? L.S("HotkeyNone") : HotkeyText.Format(mods, key);
+            if (HotkeyChanged != null) HotkeyChanged(this, EventArgs.Empty);
+        }
+
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            Keys key = keyData & Keys.KeyCode;
+            Keys mods = keyData & Keys.Modifiers;
+
+            // Tab / Enter / Esc bez modyfikatorow dzialaja normalnie w oknie
+            if (mods == Keys.None && (key == Keys.Tab || key == Keys.Enter || key == Keys.Escape))
+                return base.ProcessCmdKey(ref msg, keyData);
+
+            if (mods == Keys.None && (key == Keys.Back || key == Keys.Delete))
+            {
+                SetHotkey(Keys.None, Keys.None);
+                return true;
+            }
+
+            if (HotkeyText.IsModifierKey(key))
+            {
+                // podglad w trakcie wciskania, np. "Ctrl+Alt+..."
+                Text = ((mods & Keys.Control) != 0 ? "Ctrl+" : "") +
+                       ((mods & Keys.Alt) != 0 ? "Alt+" : "") +
+                       ((mods & Keys.Shift) != 0 ? "Shift+" : "") + "...";
+                return true;
+            }
+
+            if (HotkeyText.IsValid(mods, key)) SetHotkey(mods, key);
+            else System.Media.SystemSounds.Beep.Play();
+            return true;
+        }
+
+        protected override void OnLostFocus(EventArgs e)
+        {
+            base.OnLostFocus(e);
+            SetHotkey(Mods, Key); // przywroc tekst, jesli zostal sam podglad "Ctrl+..."
+        }
+    }
+
+    // ---------------------------------------------------------------
     // Okno Ustawienia
     // ---------------------------------------------------------------
     public class SettingsForm : Form
@@ -739,8 +1212,10 @@ namespace AlwaysAwake
 
         ComboBox cmbMode, cmbAutoOff, cmbLanguage;
         NumericUpDown numInterval, numIdle;
-        CheckBox chkJitter, chkIdle, chkStartActive, chkAutoStart;
-        int[] autoOffValues = new int[] { 0, 30, 60, 120, 240 };
+        CheckBox chkJitter, chkIdle, chkStartActive, chkAutoStart, chkUpdates, chkHotkey;
+        HotkeyBox hotkeyBox;
+        Label hotkeyNote;
+        List<int> autoOffValues = new List<int>(new int[] { 0, 30, 60, 120, 240 });
 
         const int x1 = 16, x2 = 210, w2 = 180, h = 26;
 
@@ -788,13 +1263,38 @@ namespace AlwaysAwake
             AddLabel(L.S("LblAutoOff"), y);
             cmbAutoOff = new ComboBox();
             cmbAutoOff.DropDownStyle = ComboBoxStyle.DropDownList;
+            if (!autoOffValues.Contains(s.AutoOffMinutes)) autoOffValues.Add(s.AutoOffMinutes); // wlasny czas
             foreach (int m in autoOffValues) cmbAutoOff.Items.Add(L.AutoOffLabel(m));
-            cmbAutoOff.SelectedIndex = IndexOfValue(s.AutoOffMinutes);
+            cmbAutoOff.SelectedIndex = autoOffValues.IndexOf(s.AutoOffMinutes);
             cmbAutoOff.SetBounds(x2, y - 3, w2, h); Controls.Add(cmbAutoOff); y += h + 10;
 
             chkStartActive = AddCheck(L.S("ChkStartActive"), s.StartActive, ref y);
             chkAutoStart = AddCheck(L.S("ChkAutoStart"), autoStart, ref y);
-            y += 6;
+            chkUpdates = AddCheck(L.S("ChkUpdates"), s.CheckUpdates, ref y);
+            y += 8;
+
+            chkHotkey = new CheckBox();
+            chkHotkey.Text = L.S("ChkHotkey");
+            chkHotkey.Checked = s.HotkeyEnabled;
+            chkHotkey.SetBounds(x1, y - 2, x2 - x1 - 8, h);
+            Controls.Add(chkHotkey);
+
+            hotkeyBox = new HotkeyBox();
+            hotkeyBox.SetBounds(x2, y - 3, w2, h);
+            Controls.Add(hotkeyBox);
+            y += h + 2;
+
+            hotkeyNote = new Label();
+            hotkeyNote.SetBounds(x1, y, x2 + w2 - x1, 32);
+            Controls.Add(hotkeyNote);
+            y += 38;
+
+            hotkeyBox.HotkeyChanged += delegate { UpdateHotkeyNote(); };
+            chkHotkey.CheckedChanged += delegate { hotkeyBox.Enabled = chkHotkey.Checked; UpdateHotkeyNote(); };
+            Keys hm, hk;
+            if (HotkeyText.TryParse(s.Hotkey, out hm, out hk)) hotkeyBox.SetHotkey(hm, hk);
+            else hotkeyBox.SetHotkey(Keys.None, Keys.None);
+            hotkeyBox.Enabled = chkHotkey.Checked;
 
             AddLabel(L.S("LblLanguage"), y);
             cmbLanguage = new ComboBox();
@@ -816,6 +1316,20 @@ namespace AlwaysAwake
 
             AcceptButton = ok; CancelButton = cancel;
             ClientSize = new Size(x2 + w2 + x1, y + 28 + 16);
+        }
+
+        void UpdateHotkeyNote()
+        {
+            if (chkHotkey.Checked && HotkeyText.ConflictsWithAltGr(hotkeyBox.Mods, hotkeyBox.Key))
+            {
+                hotkeyNote.ForeColor = Color.Firebrick;
+                hotkeyNote.Text = string.Format(L.S("HotkeyAltGr"), hotkeyBox.Value, HotkeyText.KeyName(hotkeyBox.Key));
+            }
+            else
+            {
+                hotkeyNote.ForeColor = Color.Gray;
+                hotkeyNote.Text = L.S("HotkeyHint");
+            }
         }
 
         void AddLabel(string text, int y)
@@ -843,13 +1357,6 @@ namespace AlwaysAwake
             return v;
         }
 
-        int IndexOfValue(int minutes)
-        {
-            for (int i = 0; i < autoOffValues.Length; i++)
-                if (autoOffValues[i] == minutes) return i;
-            return 0;
-        }
-
         void ReadBack()
         {
             Result.Mode = (string)cmbMode.SelectedItem;
@@ -859,8 +1366,105 @@ namespace AlwaysAwake
             Result.IdleThresholdSeconds = (int)numIdle.Value;
             Result.AutoOffMinutes = autoOffValues[cmbAutoOff.SelectedIndex];
             Result.StartActive = chkStartActive.Checked;
+            Result.CheckUpdates = chkUpdates.Checked;
+            Result.HotkeyEnabled = chkHotkey.Checked && hotkeyBox.Key != Keys.None;
+            if (hotkeyBox.Key != Keys.None) Result.Hotkey = hotkeyBox.Value;
             Result.Language = L.Codes[cmbLanguage.SelectedIndex];
             AutoStartEnabled = chkAutoStart.Checked;
+        }
+    }
+
+    // ---------------------------------------------------------------
+    // Okno wlasnego czasu auto-wylaczenia: "po N min" albo "o godzinie".
+    // ---------------------------------------------------------------
+    public class AutoOffForm : Form
+    {
+        public int Minutes;
+        public DateTime? UntilTime;
+
+        RadioButton rbAfter, rbAt;
+        NumericUpDown numMinutes;
+        DateTimePicker dtAt;
+
+        public AutoOffForm(int currentMinutes, DateTime? currentUntil)
+        {
+            Text = L.S("AutoOffTitle");
+            try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
+            FormBorderStyle = FormBorderStyle.FixedDialog;
+            StartPosition = FormStartPosition.CenterScreen;
+            MaximizeBox = false; MinimizeBox = false;
+
+            const int x1 = 16, x2 = 210, w2 = 110, h = 26;
+            int y = 18;
+
+            rbAfter = new RadioButton();
+            rbAfter.Text = L.S("RbAfter");
+            rbAfter.SetBounds(x1, y, x2 - x1 - 8, h);
+            Controls.Add(rbAfter);
+            numMinutes = new NumericUpDown();
+            numMinutes.Minimum = 1; numMinutes.Maximum = 1440;
+            numMinutes.Value = currentMinutes > 0 ? Math.Min(currentMinutes, 1440) : 90;
+            numMinutes.SetBounds(x2, y, w2, h);
+            Controls.Add(numMinutes);
+            y += h + 10;
+
+            rbAt = new RadioButton();
+            rbAt.Text = L.S("RbAt");
+            rbAt.SetBounds(x1, y, x2 - x1 - 8, h);
+            Controls.Add(rbAt);
+            dtAt = new DateTimePicker();
+            dtAt.Format = DateTimePickerFormat.Custom;
+            dtAt.CustomFormat = "HH:mm";
+            dtAt.ShowUpDown = true;
+            DateTime suggest = DateTime.Now.AddHours(1);
+            dtAt.Value = currentUntil.HasValue ? currentUntil.Value
+                : new DateTime(suggest.Year, suggest.Month, suggest.Day, suggest.Hour, 0, 0);
+            dtAt.SetBounds(x2, y, w2, h);
+            Controls.Add(dtAt);
+            y += h + 2;
+
+            Label hint = new Label();
+            hint.Text = L.S("AtHint");
+            hint.ForeColor = Color.Gray;
+            hint.SetBounds(x1 + 18, y, x2 + w2 - x1 - 18, 20);
+            Controls.Add(hint);
+            y += 34;
+
+            rbAt.Checked = currentUntil.HasValue;
+            rbAfter.Checked = !currentUntil.HasValue;
+            // klikniecie w pole wybiera odpowiadajaca mu opcje
+            numMinutes.Enter += delegate { rbAfter.Checked = true; };
+            dtAt.Enter += delegate { rbAt.Checked = true; };
+
+            Button ok = new Button();
+            ok.Text = L.S("Ok"); ok.DialogResult = DialogResult.OK;
+            ok.SetBounds(x2 + w2 - 190, y, 90, 28);
+            ok.Click += delegate { ReadBack(); };
+            Controls.Add(ok);
+
+            Button cancel = new Button();
+            cancel.Text = L.S("Cancel"); cancel.DialogResult = DialogResult.Cancel;
+            cancel.SetBounds(x2 + w2 - 90, y, 90, 28);
+            Controls.Add(cancel);
+
+            AcceptButton = ok; CancelButton = cancel;
+            ClientSize = new Size(x2 + w2 + x1, y + 28 + 16);
+        }
+
+        void ReadBack()
+        {
+            if (rbAt.Checked)
+            {
+                DateTime now = DateTime.Now;
+                DateTime t = new DateTime(now.Year, now.Month, now.Day, dtAt.Value.Hour, dtAt.Value.Minute, 0);
+                if (t <= now) t = t.AddDays(1);
+                UntilTime = t;
+            }
+            else
+            {
+                UntilTime = null;
+                Minutes = (int)numMinutes.Value;
+            }
         }
     }
 
@@ -944,10 +1548,7 @@ namespace AlwaysAwake
                 LinkLabel v = new LinkLabel();
                 v.Text = value;
                 v.SetBounds(xv, y, width - xv - x1, 20);
-                v.LinkClicked += delegate
-                {
-                    try { Process.Start(url); } catch { }
-                };
+                v.LinkClicked += delegate { AppInfo.OpenUrl(url); };
                 Controls.Add(v);
             }
             y += 24;

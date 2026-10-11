@@ -15,7 +15,13 @@ Jeden samodzielny plik `.exe`, bez instalacji i bez zależności poza .NET Frame
   - `Both` — oba naraz (domyślnie).
 - **Tryb bezczynności (idle-aware)** — klawisz wysyłany tylko wtedy, gdy faktycznie
   jesteś bezczynny przez zadany czas, więc program nie przeszkadza podczas pracy.
-- **Auto-wyłącznik** — po 30 min / 1 / 2 / 4 godz. program sam się wstrzymuje.
+- **Auto-wyłącznik** — po 30 min / 1 / 2 / 4 godz., po własnej liczbie minut albo
+  o wybranej godzinie (np. „do 17:00”) program sam się wstrzymuje.
+- **Skrót klawiszowy** — domyślnie `Ctrl+Alt+K` włącza/wyłącza AA z dowolnego miejsca.
+  Można go zmienić lub wyłączyć w ustawieniach (ostrzeżenie, gdy koliduje z AltGr,
+  np. `Ctrl+Alt+A` = „ą”).
+- **Sprawdzanie aktualizacji** — raz dziennie (i na żądanie z menu) program sprawdza
+  GitHub Releases i pokazuje dymek, gdy jest nowsza wersja. Można wyłączyć w ustawieniach.
 - **Jitter interwału** — opcjonalne losowe wahanie odstępu (±10%).
 - **Zapamiętywanie ustawień** — `%AppData%\AA\settings.ini`.
 - **Autostart** — skrót w folderze Startup użytkownika (bez rejestru, bez admina).
@@ -61,7 +67,9 @@ w kodzie, budowanie zakończy się błędem.
 Uruchom `AA.exe` — pojawi się kropka w zasobniku.
 
 - **Prawy klik** → menu: Aktywne, Tryb, Auto-wyłącz po, Tryb bezczynności,
-  Jitter, Uruchamiaj przy starcie, Język, Ustawienia, O programie, Zakończ.
+  Jitter, Uruchamiaj przy starcie, Język, Ustawienia, Sprawdź aktualizacje,
+  O programie, Zakończ.
+- **Ctrl+Alt+K** (domyślnie) → szybkie włącz/wyłącz z klawiatury.
 - **Dwuklik lewym** → szybkie włącz/wyłącz.
 
 Argumenty wiersza poleceń (opcjonalne, nadpisują zapisane ustawienia na starcie;
