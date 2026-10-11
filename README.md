@@ -23,6 +23,9 @@ Jeden samodzielny plik `.exe`, bez instalacji i bez zależności poza .NET Frame
   (np. PowerPoint, Teams, vlc), i wraca do poprzedniego stanu po jego zamknięciu.
   Programy można dodać z listy uruchomionych.
 - **Wstrzymaj na 15 min / 30 min / 1 / 2 godz.** — przerwa, po której AA wraca samo.
+- **Bateria** — opcjonalnie AA nie podtrzymuje ekranu przy zasilaniu z baterii (zawsze
+  albo poniżej 50/30/20/10%); kropka robi się pomarańczowa, a po podłączeniu ładowarki
+  AA wraca samo.
 - Automatyka reaguje tylko na zmiany (start/koniec harmonogramu, start/zamknięcie
   programu, koniec pauzy), więc ręczne włączenie/wyłączenie obowiązuje do następnej zmiany.
 - **Skrót klawiszowy** — domyślnie `Ctrl+Alt+K` włącza/wyłącza AA z dowolnego miejsca.

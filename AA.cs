@@ -17,8 +17,8 @@ using System.Windows.Forms;
 [assembly: AssemblyDescription("Utrzymuje komputer aktywnym (zapobiega wygaszeniu i blokadzie ekranu)")]
 [assembly: AssemblyProduct("AA - Always Awake")]
 [assembly: AssemblyCopyright("Copyright (c) 2026 Galeziok")]
-[assembly: AssemblyVersion("2.5.0.0")]
-[assembly: AssemblyFileVersion("2.5.0.0")]
+[assembly: AssemblyVersion("2.6.0.0")]
+[assembly: AssemblyFileVersion("2.6.0.0")]
 
 namespace AlwaysAwake
 {
@@ -72,7 +72,7 @@ namespace AlwaysAwake
     static class AppInfo
     {
         public const string Name = "AA - Always Awake";
-        public const string Version = "2.5";
+        public const string Version = "2.6";
         public const string Author = "Galeziok";
         public const string AuthorUrl = "https://github.com/gynsior";
         public const string RepoUrl = "https://github.com/gynsior/always-awake";
@@ -217,6 +217,13 @@ namespace AlwaysAwake
             { "TipPausedUntil", new[] { "AA - wstrzymane do {0}", "AA - paused until {0}", "AA - pausiert bis {0}" } },
             { "TipApp",        new[] { ", przez {0}", ", by {0}", ", durch {0}" } },
             { "TipSchedule",   new[] { ", harmonogram do {0}", ", schedule until {0}", ", Zeitplan bis {0}" } },
+            { "TipBattery",    new[] { "AA - wstrzymane (bateria {0})", "AA - paused (battery {0})", "AA - pausiert (Akku {0})" } },
+            { "BalloonBattery", new[] { "Zasilanie z baterii ({0}) - AA nie podtrzymuje ekranu do podłączenia ładowarki.",
+                                        "On battery ({0}) - AA won't keep the screen on until you plug in.",
+                                        "Akkubetrieb ({0}) - AA hält den Bildschirm erst nach dem Anschließen wieder wach." } },
+            { "BalloonPower",  new[] { "Ładowarka podłączona - AA znowu podtrzymuje ekran.",
+                                       "Plugged in - AA keeps the screen on again.",
+                                       "Netzteil angeschlossen - AA hält den Bildschirm wieder wach." } },
             { "BalloonPauseEnd", new[] { "Koniec przerwy - AA znowu aktywne.", "Pause over - AA is active again.", "Pause vorbei - AA ist wieder aktiv." } },
 
             // --- dymki ---
@@ -279,6 +286,13 @@ namespace AlwaysAwake
             { "ChkStartActive", new[] { "Startuj jako aktywne", "Start as active", "Aktiv starten" } },
             { "ChkAutoStart",  new[] { "Uruchamiaj przy starcie systemu", "Run at Windows startup", "Mit Windows starten" } },
             { "ChkUpdates",    new[] { "Sprawdzaj aktualizacje automatycznie", "Check for updates automatically", "Automatisch nach Updates suchen" } },
+            { "ChkPortable",   new[] { "Tryb przenośny (ustawienia w pliku obok AA.exe)",
+                                       "Portable mode (settings stored next to AA.exe)",
+                                       "Portabler Modus (Einstellungen neben AA.exe)" } },
+            { "PortableFail",  new[] { "Nie udało się zmienić trybu przenośnego: {0}",
+                                       "Could not change portable mode: {0}",
+                                       "Portabler Modus konnte nicht geändert werden: {0}" } },
+            { "AboutPortable", new[] { " (tryb przenośny)", " (portable)", " (portabel)" } },
             { "ChkAutoUpdate", new[] { "Instaluj aktualizacje automatycznie", "Install updates automatically", "Updates automatisch installieren" } },
             { "LblLanguage",   new[] { "Język:", "Language:", "Sprache:" } },
             { "ChkHotkey",     new[] { "Skrót klawiszowy:", "Keyboard shortcut:", "Tastenkombination:" } },
@@ -311,6 +325,13 @@ namespace AlwaysAwake
             { "AppsHint",      new[] { "Nazwy procesów bez .exe, po jednym w linii (np. POWERPNT, Teams, vlc). Po zamknięciu programu AA wraca do poprzedniego stanu.",
                                        "Process names without .exe, one per line (e.g. POWERPNT, Teams, vlc). When the program closes, AA returns to its previous state.",
                                        "Prozessnamen ohne .exe, einer pro Zeile (z. B. POWERPNT, Teams, vlc). Nach dem Beenden kehrt AA zum vorherigen Zustand zurück." } },
+            { "ChkBattery",    new[] { "Wstrzymuj przy zasilaniu z baterii", "Pause when running on battery", "Im Akkubetrieb pausieren" } },
+            { "LblBatteryWhen", new[] { "Kiedy:", "When:", "Wann:" } },
+            { "BatteryAlways", new[] { "zawsze na baterii", "always on battery", "immer im Akkubetrieb" } },
+            { "BatteryBelow",  new[] { "poniżej {0}% baterii", "below {0}% battery", "unter {0} % Akku" } },
+            { "BatteryHint",   new[] { "Na baterii AA nie podtrzymuje ekranu (pomarańczowa kropka) i wraca samo po podłączeniu ładowarki.",
+                                       "On battery AA stops keeping the screen on (orange dot) and resumes when you plug in.",
+                                       "Im Akkubetrieb hält AA den Bildschirm nicht wach (oranger Punkt) und macht nach dem Anschließen weiter." } },
             { "PickTitle",     new[] { "AA - Wybierz programy", "AA - Choose programs", "AA - Programme auswählen" } },
             { "PickHint",      new[] { "Zaznacz programy (Ctrl = kilka naraz):", "Select programs (Ctrl = several):", "Programme auswählen (Strg = mehrere):" } },
             { "Add",           new[] { "Dodaj", "Add", "Hinzufügen" } },
@@ -492,6 +513,16 @@ namespace AlwaysAwake
         public int ScheduleEnd = 17 * 60;
         public bool AppsEnabled = false;
         public string Apps = "";                 // nazwy procesow oddzielone ';'
+        public bool BatteryPause = false;
+        public int BatteryThreshold = 0;         // 0 = zawsze na baterii, inaczej ponizej X%
+
+        // Czy bateria blokuje podtrzymywanie. percent < 0 lub > 100 = nieznany poziom.
+        public static bool BatteryBlocks(bool enabled, int threshold, bool hasBattery, bool onBattery, int percent)
+        {
+            if (!enabled || !hasBattery || !onBattery) return false;
+            if (threshold <= 0) return true;
+            return percent >= 0 && percent <= 100 && percent < threshold;
+        }
 
         public static string FormatTime(int minutes)
         {
@@ -547,7 +578,36 @@ namespace AlwaysAwake
             return Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "AA");
         }
-        public static string FilePath() { return Path.Combine(Dir(), "settings.ini"); }
+
+        // Tryb przenosny: settings.ini obok AA.exe ma pierwszenstwo przed %AppData%\AA.
+        public static string PortablePath()
+        {
+            return Path.Combine(Path.GetDirectoryName(Application.ExecutablePath), "settings.ini");
+        }
+
+        public static bool IsPortable()
+        {
+            try { return File.Exists(PortablePath()); }
+            catch { return false; }
+        }
+
+        public static string FilePath()
+        {
+            return IsPortable() ? PortablePath() : Path.Combine(Dir(), "settings.ini");
+        }
+
+        // Wlacza/wylacza tryb przenosny (tworzy/usuwa settings.ini obok exe);
+        // zawartosc zapisuje potem zwykle Save(). Zwraca komunikat bledu albo null.
+        public static string SetPortable(bool on)
+        {
+            try
+            {
+                if (on && !IsPortable()) File.WriteAllText(PortablePath(), "");
+                if (!on && IsPortable()) File.Delete(PortablePath());
+                return null;
+            }
+            catch (Exception ex) { return ex.Message; }
+        }
 
         static bool ParseBool(string v, bool def)
         {
@@ -614,6 +674,10 @@ namespace AlwaysAwake
                                 break;
                             case "AppsEnabled": s.AppsEnabled = ParseBool(v, s.AppsEnabled); break;
                             case "Apps": s.Apps = string.Join(";", ParseApps(v)); break;
+                            case "BatteryPause": s.BatteryPause = ParseBool(v, s.BatteryPause); break;
+                            case "BatteryThreshold":
+                                if (int.TryParse(v, out n) && n >= 0 && n < 100) s.BatteryThreshold = n;
+                                break;
                         }
                     }
                 }
@@ -626,7 +690,8 @@ namespace AlwaysAwake
         {
             try
             {
-                string dir = Dir();
+                string path = FilePath();
+                string dir = Path.GetDirectoryName(path);
                 if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
                 StringBuilder sb = new StringBuilder();
                 sb.AppendLine("# AA (Always Awake) - ustawienia");
@@ -648,7 +713,9 @@ namespace AlwaysAwake
                 sb.AppendLine("ScheduleEnd=" + FormatTime(ScheduleEnd));
                 sb.AppendLine("AppsEnabled=" + AppsEnabled);
                 sb.AppendLine("Apps=" + Apps);
-                File.WriteAllText(FilePath(), sb.ToString());
+                sb.AppendLine("BatteryPause=" + BatteryPause);
+                sb.AppendLine("BatteryThreshold=" + BatteryThreshold);
+                File.WriteAllText(path, sb.ToString());
             }
             catch { }
         }
@@ -794,7 +861,11 @@ namespace AlwaysAwake
         bool activeBeforeApp;      // stan do przywrocenia po zamknieciu programu
         string triggerApp;         // dzialajacy program z listy (do podpowiedzi)
 
-        Icon iconActive, iconInactive;
+        // Bateria nie zmienia stanu "Aktywne" - tylko wstrzymuje podtrzymywanie (pomaranczowa kropka).
+        bool batteryBlocked;
+        string batteryText = "?";  // np. "18%" - do podpowiedzi i dymkow
+
+        Icon iconActive, iconInactive, iconBattery;
         ToolStripMenuItem miToggle, miPauseMenu, miResume, miModeMenu, miAutoOffMenu, miAutoOffCustom;
         ToolStripMenuItem miSchedule, miApps, miAutoStart, miIdle, miJitter;
         ToolStripMenuItem miLanguageMenu, miSettings, miUpdates, miAbout, miExit;
@@ -814,6 +885,7 @@ namespace AlwaysAwake
 
             iconActive   = MakeDot(Color.FromArgb(40, 180, 70));
             iconInactive = MakeDot(Color.FromArgb(150, 150, 150));
+            iconBattery  = MakeDot(Color.FromArgb(235, 150, 30));
 
             BuildMenu();
 
@@ -852,6 +924,7 @@ namespace AlwaysAwake
             lastInSchedule = settings.ScheduleEnabled && settings.IsInSchedule(DateTime.Now);
             ApplyTexts();
             ApplyHotkey(true);
+            UpdateBattery(false);
             UpdateUi();
             DoKeepAwake(true);
             EvaluateAutomation();
@@ -1302,6 +1375,7 @@ namespace AlwaysAwake
                 }
             }
             EvaluateAutomation();
+            UpdateBattery(true);
             UpdateUi();
             DeleteOldExe(); // zaraz po aktualizacji stary plik moze byc jeszcze zablokowany
             if (settings.CheckUpdates && DateTime.Now >= nextUpdateCheck)
@@ -1311,9 +1385,38 @@ namespace AlwaysAwake
             }
         }
 
+        // Sprawdza zasilanie; przy zmianie blokady zdejmuje/przywraca podtrzymywanie.
+        void UpdateBattery(bool showBalloon)
+        {
+            PowerStatus ps = SystemInformation.PowerStatus;
+            bool hasBattery = (ps.BatteryChargeStatus & BatteryChargeStatus.NoSystemBattery) == 0 &&
+                              ps.BatteryChargeStatus != BatteryChargeStatus.Unknown;
+            bool onBattery = ps.PowerLineStatus == PowerLineStatus.Offline;
+            int percent = (int)Math.Round(ps.BatteryLifePercent * 100);
+            batteryText = percent >= 0 && percent <= 100 ? percent + "%" : "?";
+
+            bool blocked = Settings.BatteryBlocks(settings.BatteryPause, settings.BatteryThreshold,
+                hasBattery, onBattery, percent);
+            if (blocked == batteryBlocked) return;
+            batteryBlocked = blocked;
+            if (blocked)
+            {
+                ClearKeepAwake();
+                if (showBalloon && active)
+                    ShowBalloon(string.Format(L.S("BalloonBattery"), batteryText), ToolTipIcon.Info, null, 5000);
+            }
+            else
+            {
+                DoKeepAwake(true);
+                if (showBalloon && active)
+                    ShowBalloon(L.S("BalloonPower"), ToolTipIcon.Info, null, 4000);
+            }
+            UpdateUi();
+        }
+
         void DoKeepAwake(bool immediate)
         {
-            if (!active) return;
+            if (!active || batteryBlocked) return;
             if (settings.Mode == "Display" || settings.Mode == "Both")
                 SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED);
 
@@ -1440,7 +1543,7 @@ namespace AlwaysAwake
 
         void UpdateUi()
         {
-            notify.Icon = active ? iconActive : iconInactive;
+            notify.Icon = !active ? iconInactive : batteryBlocked ? iconBattery : iconActive;
             UpdateTooltip();
             miToggle.Checked = active;
             miPauseMenu.Text = pauseUntil.HasValue
@@ -1482,7 +1585,11 @@ namespace AlwaysAwake
         void UpdateTooltip()
         {
             string text;
-            if (active)
+            if (active && batteryBlocked)
+            {
+                text = string.Format(L.S("TipBattery"), batteryText);
+            }
+            else if (active)
             {
                 text = string.Format(L.S("TipActive"), settings.Mode);
                 if (untilTime.HasValue)
@@ -1533,7 +1640,13 @@ namespace AlwaysAwake
                         settings.ScheduleStart != settingsForm.Result.ScheduleStart ||
                         settings.ScheduleEnd != settingsForm.Result.ScheduleEnd;
                     settings = settingsForm.Result;
-                    settings.Save();
+                    if (settingsForm.PortableEnabled != Settings.IsPortable())
+                    {
+                        string err = Settings.SetPortable(settingsForm.PortableEnabled);
+                        if (err != null)
+                            ShowBalloon(string.Format(L.S("PortableFail"), err), ToolTipIcon.Warning, null, 6000);
+                    }
+                    settings.Save(); // trafia do pliku obok exe albo do %AppData%, zaleznie od trybu
                     AutoStart.Set(settingsForm.AutoStartEnabled);
                     L.Init(settings.Language);
                     ApplyTexts();
@@ -1542,6 +1655,7 @@ namespace AlwaysAwake
                     ClearKeepAwake();
                     if (scheduleChanged) automationReady = false; // nowy harmonogram obowiazuje od razu
                     EvaluateAutomation();
+                    UpdateBattery(false);
                     UpdateUi();
                     DoKeepAwake(true);
                 }
@@ -1660,8 +1774,11 @@ namespace AlwaysAwake
     {
         public Settings Result;
         public bool AutoStartEnabled;
+        public bool PortableEnabled;
 
-        ComboBox cmbMode, cmbAutoOff, cmbLanguage;
+        ComboBox cmbMode, cmbAutoOff, cmbLanguage, cmbBattery;
+        CheckBox chkPortable, chkBattery;
+        int[] batteryValues = new int[] { 0, 50, 30, 20, 10 };
         NumericUpDown numInterval, numIdle;
         CheckBox chkJitter, chkIdle, chkStartActive, chkAutoStart, chkUpdates, chkAutoUpdate, chkHotkey;
         CheckBox chkSchedule, chkApps;
@@ -1760,6 +1877,7 @@ namespace AlwaysAwake
 
             chkStartActive = AddCheck(L.S("ChkStartActive"), s.StartActive, x1, ref y);
             chkAutoStart = AddCheck(L.S("ChkAutoStart"), autoStart, x1, ref y);
+            chkPortable = AddCheck(L.S("ChkPortable"), Settings.IsPortable(), x1, ref y);
             chkUpdates = AddCheck(L.S("ChkUpdates"), s.CheckUpdates, x1, ref y);
             chkAutoUpdate = AddCheck(L.S("ChkAutoUpdate"), s.AutoUpdate, x1 + 18, ref y);
             chkAutoUpdate.Enabled = chkUpdates.Checked;
@@ -1859,9 +1977,27 @@ namespace AlwaysAwake
             y += 34;
 
             AddHint(L.S("AppsHint"), indent, ref y, 48);
+            y += 4;
+
+            chkBattery = AddCheck(L.S("ChkBattery"), s.BatteryPause, x1, ref y);
+            y += 2;
+            Label lblWhen = new Label();
+            lblWhen.Text = L.S("LblBatteryWhen");
+            lblWhen.SetBounds(indent, y + 3, 80, 20);
+            host.Controls.Add(lblWhen);
+            cmbBattery = new ComboBox();
+            cmbBattery.DropDownStyle = ComboBoxStyle.DropDownList;
+            foreach (int v in batteryValues)
+                cmbBattery.Items.Add(v == 0 ? L.S("BatteryAlways") : string.Format(L.S("BatteryBelow"), v));
+            cmbBattery.SelectedIndex = Math.Max(0, Array.IndexOf(batteryValues, s.BatteryThreshold));
+            cmbBattery.SetBounds(indent + 82, y, 200, h);
+            host.Controls.Add(cmbBattery);
+            y += h + 6;
+            AddHint(L.S("BatteryHint"), indent, ref y, 34);
 
             chkSchedule.CheckedChanged += delegate { UpdateAutomationEnabled(); };
             chkApps.CheckedChanged += delegate { UpdateAutomationEnabled(); };
+            chkBattery.CheckedChanged += delegate { UpdateAutomationEnabled(); };
             UpdateAutomationEnabled();
             return y;
         }
@@ -1881,6 +2017,7 @@ namespace AlwaysAwake
             foreach (CheckBox c in chkDays) c.Enabled = chkSchedule.Checked;
             dtFrom.Enabled = dtTo.Enabled = chkSchedule.Checked;
             txtApps.Enabled = btnPickApps.Enabled = chkApps.Checked;
+            cmbBattery.Enabled = chkBattery.Checked;
         }
 
         void PickApps()
@@ -1966,8 +2103,11 @@ namespace AlwaysAwake
             Result.ScheduleEnd = dtTo.Value.Hour * 60 + dtTo.Value.Minute;
             Result.Apps = string.Join(";", Settings.ParseApps(txtApps.Text));
             Result.AppsEnabled = chkApps.Checked && Result.Apps.Length > 0;
+            Result.BatteryPause = chkBattery.Checked;
+            Result.BatteryThreshold = batteryValues[cmbBattery.SelectedIndex];
 
             AutoStartEnabled = chkAutoStart.Checked;
+            PortableEnabled = chkPortable.Checked;
         }
     }
 
@@ -2186,7 +2326,7 @@ namespace AlwaysAwake
             AddRow(L.S("AboutAuthor"), AppInfo.Author + " (github.com/gynsior)", AppInfo.AuthorUrl, ref y);
             AddRow(L.S("AboutLicense"), L.S("AboutLicenseText"), null, ref y);
             AddRow(L.S("AboutSource"), "github.com/gynsior/always-awake", AppInfo.RepoUrl, ref y);
-            AddRow(L.S("AboutSettings"), Settings.FilePath(), null, ref y);
+            AddRow(L.S("AboutSettings"), Settings.FilePath() + (Settings.IsPortable() ? L.S("AboutPortable") : ""), null, ref y);
             y += 8;
 
             Label copy = new Label();
